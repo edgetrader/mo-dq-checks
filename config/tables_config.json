@@ -1,0 +1,631 @@
+[
+  {
+    "table_name": "KPI_TRADING_PERF",
+    "source_folder": "public/YYYYMM/rqa",
+    "file_name": "YYYYMM_KPI_TRADING_PERF.xlsx",
+    "sheet_name": "data",
+    "provided_by": "RQA",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "REPORT DATE": "report_date",
+      "ANALYTICS": "analytics",
+      "VALUES": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "fi_execution_far_touch_bp_ytd_virtu",
+      "fi_bidask_spread_bp_ytd_virtu",
+      "eq_vwap_bp_ytd_virtu",
+      "eq_mkt_imp_arr_bp_ytd_virtu"
+    ],
+    "kpi_analytics": [
+      "fi_execution_far_touch_bp_ytd_virtu",
+      "fi_bidask_spread_bp_ytd_virtu",
+      "eq_vwap_bp_ytd_virtu",
+      "eq_mkt_imp_arr_bp_ytd_virtu"
+    ]
+  },
+  {
+    "table_name": "KPI_STRESS_SALES",
+    "source_folder": "public/YYYYMM/rqa",
+    "file_name": "YYYYMM_KPI_STRESS_SALES.xlsx",
+    "sheet_name": "template",
+    "provided_by": "RQA",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "REPORT DATE": "report_date",
+      "MANDATE_ID": "mandate_id",
+      "ANALYTICS": "analytics",
+      "VALUES": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "port_stress_sales_ytd",
+      "port_stress_sales_3y"
+    ],
+    "kpi_analytics": [
+      "port_stress_sales_ytd",
+      "port_stress_sales_3y"
+    ]
+  },
+  {
+    "table_name": "DOWNGRADE",
+    "source_folder": "public/YYYYMM/rqa",
+    "file_name": "YYYYMM_DOWNGRADE.xlsx",
+    "sheet_name": "template",
+    "provided_by": "RQA",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "REPORT DATE": "report_date",
+      "MANDATE_ID": "mandate_id",
+      "ANALYTICS": "analytics",
+      "VALUES": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "port_downgrade_ytd",
+      "port_downgrade_3y",
+      "bmk_downgrade_ytd",
+      "bmk_downgrade_3y"
+    ],
+    "kpi_analytics": [
+      "port_downgrade_ytd",
+      "port_downgrade_3y",
+      "bmk_downgrade_ytd",
+      "bmk_downgrade_3y"
+    ]
+  },
+  {
+    "table_name": "ORR",
+    "source_folder": "public/YYYYMM/non-perf",
+    "file_name": "YYYYMM_ORR.xlsx",
+    "sheet_name": null,
+    "provided_by": "BS",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Text",
+    "expected_analytics": [
+      "fund_orr"
+    ],
+    "kpi_analytics": null
+  },
+  {
+    "table_name": "MGMT_FEES",
+    "source_folder": "public/YYYYMM/non-perf",
+    "file_name": "YYYYMM_MGMT_FEES.xlsx",
+    "sheet_name": null,
+    "provided_by": "BS",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "mgmt_fees",
+      "rebates"
+    ],
+    "kpi_analytics": null
+  },
+  {
+    "table_name": "DURATION_TARGET",
+    "source_folder": "public/YYYYMM/non-perf",
+    "file_name": "YYYYMM_DURATION_TARGET.xlsx",
+    "sheet_name": null,
+    "provided_by": "BS",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Text",
+    "expected_analytics": [
+      "tgt_dur_range"
+    ],
+    "kpi_analytics": null
+  },
+  {
+    "table_name": "DURATION",
+    "source_folder": "public/YYYYMM/non-perf",
+    "file_name": "YYYYMM_DURATION.xlsx",
+    "sheet_name": null,
+    "provided_by": "BS",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "port_dur",
+      "tgt_dur_min",
+      "tgt_dur_max"
+    ],
+    "kpi_analytics": null
+  },
+  {
+    "table_name": "YIELD",
+    "source_folder": "public/YYYYMM/non-perf",
+    "file_name": "YYYYMM_YIELD.xlsx",
+    "sheet_name": null,
+    "provided_by": "BS",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "fund_mkt_yield"
+    ],
+    "kpi_analytics": null
+  },
+  {
+    "table_name": "PERF_NMY",
+    "source_folder": "public/YYYYMM/perf",
+    "file_name": "YYYYMM_PERF_NMY.xlsx",
+    "sheet_name": null,
+    "provided_by": "PRA",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "nmy_rtn_mtd",
+      "nmy_rtn_3m",
+      "nmy_rtn_ytd",
+      "nmy_rtn_1y",
+      "tgt_rtn_mtd",
+      "tgt_rtn_3m",
+      "tgt_rtn_ytd",
+      "tgt_rtn_1y"
+    ],
+    "kpi_analytics": [
+      "nmy_rtn_ytd",
+      "tgt_rtn_ytd"
+    ]
+  },
+  {
+    "table_name": "PERF_NETT",
+    "source_folder": "public/YYYYMM/perf",
+    "file_name": "YYYYMM_PERF_NETT.xlsx",
+    "sheet_name": null,
+    "provided_by": "PRA",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "port_nett_rtn_1m",
+      "port_nett_rtn_3m",
+      "port_nett_rtn_6m",
+      "port_nett_rtn_ytd",
+      "port_nett_rtn_1y",
+      "port_nett_rtn_2y_ann",
+      "port_nett_rtn_3y_ann",
+      "port_nett_rtn_5y_ann",
+      "port_nett_rtn_7y_ann",
+      "port_nett_rtn_10y_ann",
+      "port_nett_rtn_si_ann",
+      "port_nett_rtn_si_ann_insource",
+      "bmk_nett_rtn_1m",
+      "bmk_nett_rtn_3m",
+      "bmk_nett_rtn_6m",
+      "bmk_nett_rtn_ytd",
+      "bmk_nett_rtn_1y",
+      "bmk_nett_rtn_2y_ann",
+      "bmk_nett_rtn_3y_ann",
+      "bmk_nett_rtn_5y_ann",
+      "bmk_nett_rtn_7y_ann",
+      "bmk_nett_rtn_10y_ann",
+      "bmk_nett_rtn_si_ann",
+      "bmk_nett_rtn_si_ann_insource"
+    ],
+    "kpi_analytics": null
+  },
+  {
+    "table_name": "PERF_GROSS_TAA",
+    "source_folder": "public/YYYYMM/perf",
+    "file_name": "YYYYMM_PERF_GROSS_TAA.xlsx",
+    "sheet_name": null,
+    "provided_by": "PRA",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "excess_gross_rtn_ytd",
+      "excess_gross_rtn_3y_ann"
+    ],
+    "kpi_analytics": null
+  },
+  {
+    "table_name": "PERF_GROSS_AUS",
+    "source_folder": "public/YYYYMM/perf",
+    "file_name": "YYYYMM_PERF_GROSS_AUS.xlsx",
+    "sheet_name": null,
+    "provided_by": "PRA",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "port_gross_rtn_1m",
+      "port_gross_rtn_3m",
+      "port_gross_rtn_6m",
+      "port_gross_rtn_ytd",
+      "port_gross_rtn_1y",
+      "port_gross_rtn_3y_ann",
+      "port_gross_rtn_5y_ann",
+      "port_gross_rtn_si_ann",
+      "bmk_gross_rtn_1m",
+      "bmk_gross_rtn_3m",
+      "bmk_gross_rtn_6m",
+      "bmk_gross_rtn_ytd",
+      "bmk_gross_rtn_1y",
+      "bmk_gross_rtn_3y_ann",
+      "bmk_gross_rtn_5y_ann",
+      "bmk_gross_rtn_si_ann"
+    ],
+    "kpi_analytics": [
+      "port_gross_rtn_ytd",
+      "port_gross_rtn_3y_ann",
+      "bmk_gross_rtn_ytd",
+      "bmk_gross_rtn_3y_ann"
+    ]
+  },
+  {
+    "table_name": "PERF_GROSS",
+    "source_folder": "public/YYYYMM/perf",
+    "file_name": "YYYYMM_PERF_GROSS.xlsx",
+    "sheet_name": null,
+    "provided_by": "PRA",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "port_gross_rtn_1m",
+      "port_gross_rtn_3m",
+      "port_gross_rtn_6m",
+      "port_gross_rtn_ytd",
+      "port_gross_rtn_1y",
+      "port_gross_rtn_2y_ann",
+      "port_gross_rtn_3y_ann",
+      "port_gross_rtn_5y_ann",
+      "port_gross_rtn_7y_ann",
+      "port_gross_rtn_10y_ann",
+      "port_gross_rtn_si_ann",
+      "port_gross_rtn_si_ann_insource",
+      "bmk_gross_rtn_1m",
+      "bmk_gross_rtn_3m",
+      "bmk_gross_rtn_6m",
+      "bmk_gross_rtn_ytd",
+      "bmk_gross_rtn_1y",
+      "bmk_gross_rtn_2y_ann",
+      "bmk_gross_rtn_3y_ann",
+      "bmk_gross_rtn_5y_ann",
+      "bmk_gross_rtn_7y_ann",
+      "bmk_gross_rtn_10y_ann",
+      "bmk_gross_rtn_si_ann",
+      "bmk_gross_rtn_si_ann_insource",
+      "port_gross_rtn_qtd",
+      "bmk_gross_rtn_qtd"
+    ],
+    "kpi_analytics": [
+      "port_gross_rtn_ytd",
+      "port_gross_rtn_3y_ann",
+      "port_gross_rtn_si_ann",
+      "bmk_gross_rtn_ytd",
+      "bmk_gross_rtn_3y_ann",
+      "bmk_gross_rtn_si_ann"
+    ]
+  },
+  {
+    "table_name": "PERF_CHAINLINK",
+    "source_folder": "public/YYYYMM/perf",
+    "file_name": "YYYYMM_PERF_CHAINLINK.xlsx",
+    "sheet_name": null,
+    "provided_by": "PRA",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "port_gross_rtn_3y_ann",
+      "port_gross_rtn_si_ann",
+      "bmk_gross_rtn_3y_ann",
+      "bmk_gross_rtn_si_ann"
+    ],
+    "kpi_analytics": [
+      "port_gross_rtn_3y_ann",
+      "port_gross_rtn_si_ann",
+      "bmk_gross_rtn_3y_ann",
+      "bmk_gross_rtn_si_ann"
+    ]
+  },
+  {
+    "table_name": "PERF_CARVE_OUT",
+    "source_folder": "public/YYYYMM/perf",
+    "file_name": "YYYYMM_PERF_CARVE_OUT.xlsx",
+    "sheet_name": null,
+    "provided_by": "PRA",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "port_gross_rtn_1m",
+      "port_gross_rtn_3m",
+      "port_gross_rtn_6m",
+      "port_gross_rtn_ytd",
+      "port_gross_rtn_1y",
+      "port_gross_rtn_2y_ann",
+      "port_gross_rtn_3y_ann",
+      "port_gross_rtn_5y_ann",
+      "port_gross_rtn_10y_ann",
+      "port_gross_rtn_si_ann",
+      "port_gross_rtn_si_ann_insource",
+      "bmk_gross_rtn_1m",
+      "bmk_gross_rtn_3m",
+      "bmk_gross_rtn_6m",
+      "bmk_gross_rtn_ytd",
+      "bmk_gross_rtn_1y",
+      "bmk_gross_rtn_2y_ann",
+      "bmk_gross_rtn_3y_ann",
+      "bmk_gross_rtn_5y_ann",
+      "bmk_gross_rtn_10y_ann",
+      "bmk_gross_rtn_si_ann",
+      "bmk_gross_rtn_si_ann_insource"
+    ],
+    "kpi_analytics": null
+  },
+  {
+    "table_name": "PERF_ADVISORY",
+    "source_folder": "public/YYYYMM/perf",
+    "file_name": "YYYYMM_PERF_ADVISORY.xlsx",
+    "sheet_name": null,
+    "provided_by": "PRA",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "bmk_nett_rtn_ytd",
+      "port_nett_rtn_3m",
+      "port_nett_rtn_1y",
+      "bmk_nett_rtn_3y_ann",
+      "port_nett_rtn_ytd",
+      "port_nett_rtn_3y_ann",
+      "port_nett_rtn_1m",
+      "bmk_nett_rtn_1m",
+      "bmk_nett_rtn_1y",
+      "bmk_nett_rtn_3m",
+      "port_gross_rtn_1y",
+      "port_gross_rtn_3m",
+      "bmk_gross_rtn_si_ann",
+      "port_gross_rtn_1m",
+      "port_gross_rtn_ytd",
+      "bmk_gross_rtn_3m",
+      "port_gross_rtn_3y_ann",
+      "bmk_gross_rtn_ytd",
+      "bmk_gross_rtn_3y_ann",
+      "bmk_gross_rtn_1m",
+      "port_gross_rtn_si_ann",
+      "bmk_gross_rtn_1y",
+      "port_gross_rtn_3y",
+      "port_gross_rtn_5y",
+      "bmk_gross_rtn_3y",
+      "bmk_gross_rtn_5y"
+    ],
+    "kpi_analytics": [
+      "port_gross_rtn_ytd",
+      "port_gross_rtn_3y_ann",
+      "bmk_gross_rtn_ytd",
+      "bmk_gross_rtn_3y_ann"
+    ]
+  },
+  {
+    "table_name": "PEER_RANK",
+    "source_folder": "public/YYYYMM/perf",
+    "file_name": "YYYYMM_PEER_RANK.xlsx",
+    "sheet_name": null,
+    "provided_by": "PRA",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "peer_rank_1m",
+      "peer_rank_3m",
+      "peer_rank_6m",
+      "peer_rank_ytd",
+      "peer_rank_1y",
+      "peer_rank_2y",
+      "peer_rank_3y",
+      "peer_rank_5y"
+    ],
+    "kpi_analytics": [
+      "peer_rank_1y",
+      "peer_rank_3y"
+    ]
+  },
+  {
+    "table_name": "NEW_PURCHASE",
+    "source_folder": "public/YYYYMM/perf",
+    "file_name": "YYYYMM_NEW_PURCHASE.xlsx",
+    "sheet_name": null,
+    "provided_by": "PRA",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "new_pur_usd_mtd",
+      "new_pur_usd_3m",
+      "new_pur_usd_ytd",
+      "new_pur_usd_1y"
+    ],
+    "kpi_analytics": [
+      "new_pur_usd_ytd"
+    ]
+  },
+  {
+    "table_name": "AUM_CARVE_OUT",
+    "source_folder": "public/YYYYMM/perf",
+    "file_name": "YYYYMM_AUM_CARVE_OUT.xlsx",
+    "sheet_name": null,
+    "provided_by": "PRA",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "aum_usd"
+    ],
+    "kpi_analytics": null
+  },
+  {
+    "table_name": "COMMITMENT",
+    "source_folder": "private/YYYYMM/non-perf",
+    "file_name": "YYYYMM_COMMITMENT.xlsx",
+    "sheet_name": "data",
+    "provided_by": "BS",
+    "file_frequency": "Monthly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "inbound_commit",
+      "outbound_commit",
+      "drawn"
+    ],
+    "kpi_analytics": null
+  },
+  {
+    "table_name": "PERF_GROSS_PC",
+    "source_folder": "private/YYYYMM/perf",
+    "file_name": "YYYYMM_PERF_GROSS_PC.xlsx",
+    "sheet_name": null,
+    "provided_by": "PRA",
+    "file_frequency": "Quarterly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "port_gross_rtn_1m",
+      "port_gross_rtn_3m",
+      "port_gross_rtn_6m",
+      "port_gross_rtn_ytd",
+      "port_gross_rtn_1y",
+      "port_gross_rtn_3y_ann",
+      "port_gross_rtn_5y_ann",
+      "port_gross_rtn_si_ann",
+      "bmk_gross_rtn_1m",
+      "bmk_gross_rtn_3m",
+      "bmk_gross_rtn_6m",
+      "bmk_gross_rtn_ytd",
+      "bmk_gross_rtn_1y",
+      "bmk_gross_rtn_3y_ann",
+      "bmk_gross_rtn_5y_ann",
+      "bmk_gross_rtn_si_ann"
+    ],
+    "kpi_analytics": [
+      "port_gross_rtn_ytd",
+      "port_gross_rtn_3y_ann",
+      "bmk_gross_rtn_ytd",
+      "bmk_gross_rtn_3y_ann"
+    ]
+  },
+  {
+    "table_name": "IRR",
+    "source_folder": "private/YYYYMM/perf",
+    "file_name": "YYYYMM_IRR.xlsx",
+    "sheet_name": null,
+    "provided_by": "PRA",
+    "file_frequency": "Quarterly",
+    "colname_map": {
+      "report_date": "report_date",
+      "hr_mandate_id": "mandate_id",
+      "analytics": "analytics",
+      "val_amt": "val_amt"
+    },
+    "val_amt_type": "Numeric",
+    "expected_analytics": [
+      "port_irr_3y_ann_all_txn",
+      "port_irr_si_ann_all_txn",
+      "bmk_ltira_si_ann_all_txn",
+      "port_irr_5y_ann_all_txn",
+      "port_irr_ytd_all_txn"
+    ],
+    "kpi_analytics": [
+      "port_irr_si_ann_all_txn",
+      "bmk_ltira_si_ann_all_txn"
+    ]
+  }
+]
