@@ -1,4 +1,4 @@
-# mo-dq-check
+# mo-dq-checks
 
 Data quality checks for a set of monthly Excel table exports (RQA/BS/PRA
 reporting data). Designed to run as a scheduled job (cron, Databricks Job,
@@ -79,7 +79,7 @@ Exits `0` if everything passes, `1` if anything fails (with a
 
 ```python
 import sys
-sys.path.insert(0, "/path/to/mo-dq-check/src")
+sys.path.insert(0, "/path/to/mo-dq-checks/src")
 from runner import run_dq_checks, DQCheckFailure
 
 run_dq_checks(yyyymm="202607", data_root="/dbfs/mnt/.../data")
