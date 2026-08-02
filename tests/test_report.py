@@ -219,6 +219,17 @@ def test_failures_sheet_lists_every_failure(mixed_results, tmp_path):
     assert "non-numeric" in sheet.cell(3, 3).value
 
 
+def test_failures_table_and_check_are_middle_aligned(mixed_results, tmp_path):
+    """They should sit level with a detail message that wrapped over several lines."""
+    workbook, _ = write(mixed_results, tmp_path)
+    sheet = workbook["Failures"]
+
+    for row in range(2, sheet.max_row + 1):
+        for column in (1, 2):
+            cell = sheet.cell(row, column)
+            assert cell.alignment.vertical == "center", f"{cell.coordinate} is not middle-aligned"
+
+
 def test_tab_colour_signals_the_outcome(clean_results, mixed_results, tmp_path):
     clean, _ = write(clean_results, tmp_path / "a")
     failing, _ = write(mixed_results, tmp_path / "b")

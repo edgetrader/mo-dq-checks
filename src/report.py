@@ -418,8 +418,16 @@ def _failures_sheet(ws, data: ReportData) -> None:
             result = data.by_table[table].get(check)
             if not result or result.status != "FAIL":
                 continue
-            ws.cell(row=row, column=1, value=table).font = Font(size=10, bold=True)
-            ws.cell(row=row, column=2, value=check).font = Font(size=10, color=FAIL_FG)
+            # Table and check are single values, so they sit level with a
+            # detail message that has wrapped over several lines.
+            name = ws.cell(row=row, column=1, value=table)
+            name.font = Font(size=10, bold=True)
+            name.alignment = LEFT_MIDDLE
+
+            failed_check = ws.cell(row=row, column=2, value=check)
+            failed_check.font = Font(size=10, color=FAIL_FG)
+            failed_check.alignment = LEFT_MIDDLE
+
             detail = ws.cell(row=row, column=3, value=result.message)
             detail.alignment = LEFT_TOP
             detail.font = Font(size=9)
