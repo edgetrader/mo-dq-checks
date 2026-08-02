@@ -333,9 +333,20 @@ MAX_IDS_LISTED = 12
 MAX_PATTERNS_LISTED = 5
 
 # A source value like "RQA_202611_extract" carries the month it was produced
-# for. Bounded by non-digits so a longer number can't match by accident.
-SOURCE_MONTH = re.compile(r"(?<!\d)(\d{6})(?!\d)")
+# for, written either as YYYYMM or YYYY-MM -- the two mean the same month.
+# Both are bounded by non-digits so a longer number can't match by accident;
+# the dashed form also refuses a trailing dash, so a full date like
+# 2026-04-15 is not read as a month.
+SOURCE_MONTH = re.compile(r"(?<!\d)(\d{4})-(\d{2})(?![\d-])|(?<!\d)(\d{6})(?!\d)")
 SOURCE_COLUMN = "source"
+
+
+def _months_in(value) -> list[str]:
+    """Every month named in a source value, normalised to YYYYMM."""
+    return [
+        f"{year}{month}" if year else solid
+        for year, month, solid in SOURCE_MONTH.findall(str(value))
+    ]
 
 
 def _format_ids(ids: list[str]) -> str:
@@ -385,7 +396,7 @@ def _check_source_timeliness(
     unverifiable = 0
 
     for position, value in enumerate(df[column]):
-        months = SOURCE_MONTH.findall(str(value)) if pd.notna(value) else []
+        months = _months_in(value) if pd.notna(value) else []
         if not months:
             # No month in the source at all -- nothing to contradict the run.
             # Counted, but deliberately not warned on, or a source that never

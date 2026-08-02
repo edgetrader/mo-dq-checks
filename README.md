@@ -28,8 +28,11 @@ For every table listed in `config/tables_config.json`, for a given month
 `source_timeliness` reports **WARN** rather than FAIL: stale data is a
 judgement call, not a reason to fail the job, so it never affects the exit
 code. It is skipped entirely for files with no `source` column, and a
-source value carrying no `YYYYMM` at all is treated as "nothing to check"
+source value carrying no month at all is treated as "nothing to check"
 rather than warned on — otherwise a source like `RQA` would warn for ever.
+
+The month may be written `202604` or `2026-04`; both mean the same month
+and are reported as `202604`.
 
 A table's check chain stops early on `file_exists`, `sheet_exists`,
 `required_columns`, or `row_count` failures (nothing downstream can be

@@ -134,6 +134,21 @@ def test_a_longer_number_is_not_mistaken_for_a_month(table_cfg):
     assert timeliness(table_cfg, df).status == "PASS"
 
 
+@pytest.mark.parametrize("value", ["RQA_202607", "RQA_2026-07"])
+def test_yyyy_mm_means_the_same_month_as_yyyymm(table_cfg, value):
+    """The source may write July 2026 either way; both are the run month."""
+    assert timeliness(table_cfg, frame({"M001": value})).status == "PASS"
+
+
+@pytest.mark.parametrize("value", ["RQA_202606", "RQA_2026-06"])
+def test_a_stale_month_warns_in_either_form(table_cfg, value):
+    result = timeliness(table_cfg, frame({"M001": value}))
+
+    assert result.status == "WARN"
+    # Normalised, so the message reads the same however the source wrote it.
+    assert "202606 for 1 mandate(s): M001" in result.message
+
+
 def test_nulls_count_as_undated(table_cfg):
     df = frame({"M001": "RQA_202607", "M002": None})
 
