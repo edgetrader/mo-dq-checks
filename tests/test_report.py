@@ -143,6 +143,17 @@ def test_checks_that_never_ran_are_blank_not_failed(mixed_results, tmp_path):
     assert cell.value not in ("PASS", "FAIL")
 
 
+def test_results_values_are_middle_aligned(mixed_results, tmp_path):
+    """Rows stay visually level even when a wrapped comment makes one tall."""
+    workbook, _ = write(mixed_results, tmp_path)
+    sheet = workbook["Results"]
+
+    for row in range(2, sheet.max_row + 1):
+        for column in range(1, sheet.max_column + 1):
+            cell = sheet.cell(row, column)
+            assert cell.alignment.vertical == "center", f"{cell.coordinate} is not middle-aligned"
+
+
 def test_results_sheet_is_navigable(mixed_results, tmp_path):
     workbook, _ = write(mixed_results, tmp_path)
     sheet = workbook["Results"]

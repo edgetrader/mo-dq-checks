@@ -56,6 +56,10 @@ HEADER_FILL = PatternFill("solid", fgColor=NAVY)
 
 CENTER = Alignment(horizontal="center", vertical="center")
 LEFT_TOP = Alignment(horizontal="left", vertical="top", wrap_text=True)
+# Results data cells are middle-aligned so a row stays visually level even
+# when a wrapped comment makes it several lines tall.
+LEFT_MIDDLE = Alignment(horizontal="left", vertical="center")
+LEFT_MIDDLE_WRAP = Alignment(horizontal="left", vertical="center", wrap_text=True)
 ROTATED = Alignment(textRotation=90, horizontal="center", vertical="bottom", wrap_text=False)
 
 THIN = Side(style="thin", color=RULE)
@@ -327,6 +331,7 @@ def _results_sheet(ws, data: ReportData) -> None:
 
         name = ws.cell(row=row, column=2, value=table)
         name.font = Font(size=10, bold=not table_ok)
+        name.alignment = LEFT_MIDDLE
         if banded:
             name.fill = banded
 
@@ -350,13 +355,13 @@ def _results_sheet(ws, data: ReportData) -> None:
 
         comments_col = len(data.checks) + 3
         comment = ws.cell(row=row, column=comments_col, value=data.comments_for(table))
-        comment.alignment = LEFT_TOP
+        comment.alignment = LEFT_MIDDLE_WRAP
         comment.font = Font(size=9)
         if banded:
             comment.fill = banded
 
         path = ws.cell(row=row, column=comments_col + 1, value=data.file_paths.get(table, ""))
-        path.alignment = Alignment(horizontal="left", vertical="top")
+        path.alignment = LEFT_MIDDLE
         path.font = Font(size=8, color=SLATE)
         if banded:
             path.fill = banded
