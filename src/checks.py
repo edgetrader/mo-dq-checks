@@ -291,14 +291,74 @@ def _check_kpi_completeness(
         actual = set(group["analytics"].unique())
         missing = set(kpi_analytics) - actual
         if missing:
-            missing_by_group[key] = sorted(missing)
+            missing_by_group[key] = tuple(sorted(missing))
 
     if missing_by_group:
-        sample = dict(list(missing_by_group.items())[:5])
-        more = f" (+{len(missing_by_group) - 5} more)" if len(missing_by_group) > 5 else ""
         return _fail(
-            table_name,
-            "kpi_completeness",
-            f"{len(missing_by_group)} group(s) missing required KPI analytics, e.g. {sample}{more}",
+            table_name, "kpi_completeness", _describe_missing_kpis(missing_by_group, group_cols)
         )
     return _pass(table_name, "kpi_completeness")
+
+
+# How much of a long list to spell out before summarising the remainder.
+MAX_IDS_LISTED = 12
+MAX_PATTERNS_LISTED = 5
+
+
+def _describe_missing_kpis(missing_by_group: dict, group_cols: list[str]) -> str:
+    """
+    Describe incomplete groups by the gap they share, not one line each.
+
+    Typically many mandates are missing the same analytic, so listing them
+    per mandate repeats the same list over and over. Inverting it -- which
+    analytics are missing, and for whom -- says the same thing in a fraction
+    of the space and makes a systemic gap obvious at a glance.
+    """
+    # groupby yields a scalar key for a single column and a tuple for several.
+    normalised = {
+        (key if isinstance(key, tuple) else (key,)): missing
+        for key, missing in missing_by_group.items()
+    }
+
+    label_of, noun = _group_labeller(normalised, group_cols)
+
+    ids_by_gap: dict[tuple, list[str]] = {}
+    for key, missing in normalised.items():
+        ids_by_gap.setdefault(missing, []).append(label_of(key))
+
+    # Widest-reaching gap first -- that's the one worth acting on.
+    patterns = sorted(ids_by_gap.items(), key=lambda item: (-len(item[1]), item[0]))
+    described = []
+    for missing, ids in patterns[:MAX_PATTERNS_LISTED]:
+        ids = sorted(ids)
+        shown = ", ".join(ids[:MAX_IDS_LISTED])
+        if len(ids) > MAX_IDS_LISTED:
+            shown += f", +{len(ids) - MAX_IDS_LISTED} more"
+        described.append(f"{list(missing)} for {len(ids)} {noun}(s): {shown}")
+
+    if len(patterns) > MAX_PATTERNS_LISTED:
+        described.append(f"+{len(patterns) - MAX_PATTERNS_LISTED} further pattern(s)")
+
+    return (
+        f"{len(normalised)} {noun}(s) missing required KPI analytics — "
+        + "; ".join(described)
+    )
+
+
+def _group_labeller(normalised: dict, group_cols: list[str]):
+    """
+    How to name each incomplete group in the message.
+
+    Where the file covers a single report_date -- the normal case for a
+    monthly extract -- naming the mandate alone is enough. If several dates
+    are involved, the date has to stay in or the message would merge groups
+    that are genuinely different.
+    """
+    if "mandate_id" in group_cols:
+        mandate_at = group_cols.index("mandate_id")
+        others = [i for i in range(len(group_cols)) if i != mandate_at]
+        one_value_each = all(len({key[i] for key in normalised}) <= 1 for i in others)
+        if one_value_each:
+            return (lambda key: str(key[mandate_at])), "mandate"
+
+    return (lambda key: "/".join(str(part) for part in key)), "group"
