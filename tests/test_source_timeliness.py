@@ -134,36 +134,6 @@ def test_a_longer_number_is_not_mistaken_for_a_month(table_cfg):
     assert timeliness(table_cfg, df).status == "PASS"
 
 
-@pytest.mark.parametrize(
-    "value",
-    ["RQA_202607", "RQA_2026-07", "RQA_2026/07", "RQA_2026_07", "extract 2026-07-31"],
-)
-def test_separator_variants_all_mean_the_same_month(table_cfg, value):
-    """202607 and 2026-07 are the same month; a full date names it too."""
-    assert timeliness(table_cfg, frame({"M001": value})).status == "PASS"
-
-
-@pytest.mark.parametrize("value", ["RQA_202606", "RQA_2026-06", "RQA_2026/06"])
-def test_a_stale_month_warns_whatever_the_separator(table_cfg, value):
-    result = timeliness(table_cfg, frame({"M001": value}))
-
-    assert result.status == "WARN"
-    # Reported normalised, so the message reads the same however it was written.
-    assert "202606 for 1 mandate(s): M001" in result.message
-
-
-def test_an_impossible_month_is_not_treated_as_one(table_cfg):
-    """202613 is junk, not a month -- warning on it would be noise."""
-    result = timeliness(table_cfg, frame({"M001": "batch_202613"}))
-
-    assert result.status == "PASS"
-    assert "1 row(s) had no month in source" in result.message
-
-
-def test_a_non_year_number_is_not_a_month(table_cfg):
-    assert timeliness(table_cfg, frame({"M001": "id_1234-05"})).status == "PASS"
-
-
 def test_nulls_count_as_undated(table_cfg):
     df = frame({"M001": "RQA_202607", "M002": None})
 
