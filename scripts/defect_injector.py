@@ -4,7 +4,11 @@ type mutates a clean DataFrame (built by sample_data_builder.build_sample_df)
 so it fails exactly one specific dq_checks check, so test_data exercises
 every FAIL branch at least once instead of being uniformly clean.
 """
+import re
+
 import pandas as pd
+
+from sample_data_builder import SOURCE_COLUMN
 
 
 def _raw_col(table_cfg: dict, standard_name: str) -> str:
@@ -101,6 +105,28 @@ def missing_kpi(df: pd.DataFrame, table_cfg: dict) -> pd.DataFrame:
     return df.loc[~drop_mask].reset_index(drop=True)
 
 
+def stale_source(df: pd.DataFrame, table_cfg: dict) -> pd.DataFrame:
+    """
+    Rewrite one mandate's source to last month's, as if a re-run picked up a
+    stale extract. Nothing else about the row is wrong, which is the point:
+    without source_timeliness this passes every other check.
+
+    Safe on any table -- source is not part of any key or grouping.
+    """
+    df = df.copy()
+    mandate_col = _raw_col(table_cfg, "mandate_id")
+    target = df[mandate_col].iloc[0]
+    current = str(df.loc[df.index[0], SOURCE_COLUMN])
+    stale = re.sub(r"(?<!\d)(\d{6})(?!\d)", lambda m: _previous_month(m.group(1)), current)
+    df.loc[df[mandate_col] == target, SOURCE_COLUMN] = stale
+    return df
+
+
+def _previous_month(yyyymm: str) -> str:
+    year, month = int(yyyymm[:4]), int(yyyymm[4:])
+    return f"{year - 1}12" if month == 1 else f"{year}{month - 1:02d}"
+
+
 def multi_field_corruption(df: pd.DataFrame, table_cfg: dict) -> pd.DataFrame:
     """
     A row corrupted on multiple independent fields at once (bad date, null
@@ -135,4 +161,7 @@ DATAFRAME_DEFECTS = {
     "duplicate_key": (duplicate_key, {"primary_key_uniqueness"}),
     "missing_kpi": (missing_kpi, {"kpi_completeness"}),
     "multi_field_corruption": (multi_field_corruption, {"report_date_dtype", "analytics_completeness", "mandate_id_completeness"}),
+    # Reports WARN rather than FAIL -- stale data is a judgement call,
+    # not a reason to fail the job.
+    "stale_source": (stale_source, {"source_timeliness"}),
 }

@@ -45,7 +45,7 @@ CONFIG_PATH = PROJECT_ROOT / "config" / "tables_config.json"
 ROUND_ONE = ["202603", "202604", "202605", "202606", "202607"]
 ROUND_TWO = ["202608", "202609", "202610", "202611", "202612"]
 
-# defect name -> the checks it is supposed to break.
+# defect name -> the checks it is supposed to make non-passing.
 EXPECTED_CHECKS: dict[str, set[str]] = {
     "missing_file": {"file_exists"},
     "wrong_sheet": {"sheet_exists"},
@@ -71,7 +71,9 @@ def audit(months: list[str], root: Path) -> tuple[list[str], set[str]]:
             results = run_checks_for_table(config, yyyymm, str(root))
             emitted.update(r.check_name for r in results)
 
-            actual = {r.check_name for r in results if r.status == "FAIL"}
+            # Non-passing rather than failing: a seeded defect may raise a
+            # warning (stale_source) rather than a hard failure.
+            actual = {r.check_name for r in results if r.status != "PASS"}
             defect = DEFECT_PLAN.get((config["table_name"], yyyymm))
             expected = EXPECTED_CHECKS[defect] if defect else set()
 
@@ -79,7 +81,7 @@ def audit(months: list[str], root: Path) -> tuple[list[str], set[str]]:
                 mismatches.append(
                     f"{yyyymm} {config['table_name']}"
                     f"{f' (seeded {defect})' if defect else ' (should be clean)'}: "
-                    f"expected {sorted(expected) or 'no failures'}, got {sorted(actual) or 'none'}"
+                    f"expected {sorted(expected) or 'no findings'}, got {sorted(actual) or 'none'}"
                 )
 
     return mismatches, emitted

@@ -29,15 +29,27 @@ def _print_report(yyyymm: str, results: list[CheckResult]) -> None:
 
     passed = sum(1 for r in results if r.status == "PASS")
     failed = sum(1 for r in results if r.status == "FAIL")
+    warned = sum(1 for r in results if r.status == "WARN")
     tables_checked = len({r.table_name for r in results})
 
     print("-" * width)
-    print(f"SUMMARY: {tables_checked} table(s) | {len(results)} check(s) | {passed} passed | {failed} failed")
+    print(
+        f"SUMMARY: {tables_checked} table(s) | {len(results)} check(s) | "
+        f"{passed} passed | {failed} failed | {warned} warned"
+    )
 
     if failed:
         print("FAILED CHECKS:")
         for r in results:
             if r.status == "FAIL":
+                print(f"  - {r.table_name}.{r.check_name}: {r.message}")
+
+    # Listed separately so they're visible without being mistaken for
+    # failures -- warnings never affect the exit code.
+    if warned:
+        print("WARNINGS (do not fail the run):")
+        for r in results:
+            if r.status == "WARN":
                 print(f"  - {r.table_name}.{r.check_name}: {r.message}")
 
     print("=" * width)

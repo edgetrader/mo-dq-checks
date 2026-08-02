@@ -7,6 +7,8 @@ val_amt type).
 """
 import pandas as pd
 
+SOURCE_COLUMN = "source"
+
 
 def build_sample_df(table_cfg: dict, yyyymm: str) -> pd.DataFrame:
     colname_map = table_cfg["colname_map"]
@@ -30,7 +32,14 @@ def build_sample_df(table_cfg: dict, yyyymm: str) -> pd.DataFrame:
             rows.append(row)
 
     df = pd.DataFrame(rows)
-    return df.rename(columns=reverse_map)
+    df = df.rename(columns=reverse_map)
+
+    # Not part of colname_map -- an extra column the real extracts carry,
+    # naming the system and the month the data was produced for. It's what
+    # source_timeliness reads, and it also keeps the fixtures honest about
+    # unmapped columns being tolerated.
+    df[SOURCE_COLUMN] = f"{table_cfg.get('provided_by', 'SRC')}_{yyyymm}"
+    return df
 
 
 def write_table_file(table_cfg: dict, yyyymm: str, path) -> None:

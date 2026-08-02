@@ -76,6 +76,18 @@ Keep `_run_frame_checks` free of any I/O or path knowledge. If a new check
 needs something about the file, put it on `LoadedTable` rather than reaching
 for the filesystem from a check.
 
+## Three result statuses
+
+Checks emit `PASS`, `FAIL` or `WARN`. A warning is a real finding that
+shouldn't fail the job: it is counted separately, coloured amber, listed on
+the Issues sheet, and **never** affects the exit code -- only `FAIL` raises
+`DQCheckFailure`. `source_timeliness` is currently the only warning-level
+check.
+
+If you add another, remember the fixture audit compares *non-passing*
+checks, not just failures, so a warning-producing defect works there
+unchanged.
+
 ## Known behaviors (not bugs)
 
 - **Early-return checks**: `file_exists`, `sheet_exists`, `required_columns`,
@@ -92,6 +104,13 @@ for the filesystem from a check.
   `defect_injector.multi_field_corruption`'s docstring). If you need a test
   fixture with a "corrupted" row, leave at least one cell non-blank or it
   won't survive being written to `.xlsx`.
+- **A `source` value with no YYYYMM in it does not warn.** `source_timeliness`
+  only warns when a month is present *and* differs. Sources that never carry
+  a date (`RQA`, a system name) would otherwise warn on every run for ever;
+  the count of undated rows is reported in the message instead.
+- **The `source` column is not in any `colname_map`.** It survives
+  `df.rename` untouched and is found case-insensitively by name, which is
+  why the check is skipped rather than failed when a table doesn't have one.
 - **`sheet_exists`'s except clause is intentionally broad** (`except
   Exception`, not `except ValueError`). A truncated/corrupted `.xlsx` can
   raise `zipfile.BadZipFile` or other exception types, not just `ValueError`

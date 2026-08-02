@@ -9,12 +9,16 @@ Three sheets, in the order someone actually reads them:
   Results   the full matrix: one row per table, one column per check.
             Check headers are rotated so the grid stays narrow enough to
             scan without scrolling
-  Failures  just the problems, as a flat list -- the sheet you work from
+  Issues    everything that isn't a clean pass, as a flat list, failures
+            before warnings -- the sheet you work from
 
-Cell values in the matrix are still the plain strings "PASS"/"FAIL", not
-symbols, so the sheet stays filterable and machine-readable; the visual
-weight comes from colour. Icons are used only where they can't be mistaken
-for data (the verdict banner and the row-status column).
+Cell values in the matrix are the plain strings PASS/FAIL/WARN, not symbols,
+so the sheet stays filterable and machine-readable; the visual weight comes
+from colour. Icons are used only where they can't be mistaken for data (the
+verdict banner and the row-status column).
+
+A warning is a finding that shouldn't fail the job -- it is coloured amber
+throughout and never affects the exit code.
 """
 from __future__ import annotations
 
@@ -37,12 +41,13 @@ RULE = "D9D9D9"
 
 PASS_BG, PASS_FG = "C6EFCE", "006100"
 FAIL_BG, FAIL_FG = "FFC7CE", "9C0006"
+WARN_BG, WARN_FG = "FFEB9C", "9C6500"
 SKIP_BG, SKIP_FG = "F2F2F2", "BFBFBF"
 BAND_BG = "F7F9FC"
 
-TAB_OK, TAB_BAD = "00B050", "C00000"
+TAB_OK, TAB_WARN, TAB_BAD = "00B050", "FFC000", "C00000"
 
-PASS_ICON, FAIL_ICON, SKIP_TEXT = "✔", "✖", "–"
+PASS_ICON, WARN_ICON, FAIL_ICON, SKIP_TEXT = "✔", "!", "✖", "–"
 
 # --- reusable styles -------------------------------------------------------
 TITLE_FONT = Font(name="Calibri", size=18, bold=True, color=NAVY)
@@ -91,16 +96,34 @@ class ReportData:
         return [r for r in self.all_results if r.status == "FAIL"]
 
     @property
+    def warnings(self) -> list[CheckResult]:
+        return [r for r in self.all_results if r.status == "WARN"]
+
+    @property
+    def findings(self) -> list[CheckResult]:
+        """Everything that isn't a clean pass, failures first."""
+        return self.failures + self.warnings
+
+    @property
     def total(self) -> int:
         return len(self.all_results)
 
     @property
     def passed(self) -> int:
-        return self.total - len(self.failures)
+        return self.total - len(self.findings)
 
     @property
     def failing_tables(self) -> list[str]:
         return [t for t in self.tables if any(r.status == "FAIL" for r in self.by_table[t].values())]
+
+    @property
+    def warning_tables(self) -> list[str]:
+        """Tables with warnings but no outright failure."""
+        return [
+            t for t in self.tables
+            if t not in self.failing_tables
+            and any(r.status == "WARN" for r in self.by_table[t].values())
+        ]
 
     @property
     def ok(self) -> bool:
@@ -117,11 +140,12 @@ class ReportData:
             if check in results and results[check].message
         )
 
-    def check_stats(self, check: str) -> tuple[int, int]:
-        """(tables the check ran on, tables it failed on)."""
+    def check_stats(self, check: str) -> tuple[int, int, int]:
+        """(tables the check ran on, tables it failed, tables it warned on)."""
         ran = sum(1 for t in self.tables if check in self.by_table[t])
         failed = sum(1 for t in self.tables if self.status_of(t, check) == "FAIL")
-        return ran, failed
+        warned = sum(1 for t in self.tables if self.status_of(t, check) == "WARN")
+        return ran, failed, warned
 
 
 def organise(yyyymm: str, data_root: str, results: list[CheckResult], run_time: datetime) -> ReportData:
@@ -171,7 +195,7 @@ def write_excel_report(
     workbook = Workbook()
     _summary_sheet(workbook.active, data)
     _results_sheet(workbook.create_sheet("Results"), data)
-    _failures_sheet(workbook.create_sheet("Failures"), data)
+    _issues_sheet(workbook.create_sheet("Issues"), data)
     workbook.save(path)
 
     return path
@@ -182,9 +206,15 @@ def write_excel_report(
 # --------------------------------------------------------------------------
 
 
+def _tab_colour(data: ReportData) -> str:
+    if data.failures:
+        return TAB_BAD
+    return TAB_WARN if data.warnings else TAB_OK
+
+
 def _summary_sheet(ws, data: ReportData) -> None:
     ws.title = "Summary"
-    ws.sheet_properties.tabColor = TAB_OK if data.ok else TAB_BAD
+    ws.sheet_properties.tabColor = _tab_colour(data)
     ws.sheet_view.showGridLines = False
 
     for column, width in zip("ABCD", (26, 34, 12, 14)):
@@ -198,16 +228,26 @@ def _summary_sheet(ws, data: ReportData) -> None:
     ws.merge_cells("A2:D2")
     ws.row_dimensions[1].height = 26
 
-    # Verdict banner -- the one thing to see on opening the file.
-    if data.ok:
-        verdict = f"{PASS_ICON}   ALL {data.total} CHECKS PASSED"
-        background, foreground = PASS_BG, PASS_FG
-    else:
+    # Verdict banner -- the one thing to see on opening the file. Warnings
+    # get their own state: they don't fail the job, but "all passed" would be
+    # a lie when something was flagged.
+    if data.failures:
         verdict = (
             f"{FAIL_ICON}   {len(data.failures)} OF {data.total} CHECKS FAILED "
             f"ACROSS {len(data.failing_tables)} TABLE(S)"
         )
+        if data.warnings:
+            verdict += f", {len(data.warnings)} WARNING(S)"
         background, foreground = FAIL_BG, FAIL_FG
+    elif data.warnings:
+        verdict = (
+            f"{WARN_ICON}   NO FAILURES, BUT {len(data.warnings)} WARNING(S) "
+            f"ACROSS {len(data.warning_tables)} TABLE(S)"
+        )
+        background, foreground = WARN_BG, WARN_FG
+    else:
+        verdict = f"{PASS_ICON}   ALL {data.total} CHECKS PASSED"
+        background, foreground = PASS_BG, PASS_FG
 
     ws["A4"] = verdict
     ws["A4"].font = Font(size=13, bold=True, color=foreground)
@@ -229,6 +269,7 @@ def _summary_sheet(ws, data: ReportData) -> None:
     row = _label_value(ws, row, "Checks run", data.total)
     row = _label_value(ws, row, "Passed", data.passed, colour=PASS_FG)
     row = _label_value(ws, row, "Failed", len(data.failures), colour=FAIL_FG if data.failures else None)
+    row = _label_value(ws, row, "Warnings", len(data.warnings), colour=WARN_FG if data.warnings else None)
     row = _label_value(ws, row, "Tables with failures", len(data.failing_tables))
 
     _check_breakdown(ws, row + 1, data)
@@ -264,7 +305,7 @@ def _check_breakdown(ws, start: int, data: ReportData) -> None:
     ws.merge_cells(start_row=start + 1, start_column=1, end_row=start + 1, end_column=4)
 
     header_row = start + 2
-    for column, title in enumerate(("Check", "Tables failed", "Clean rate"), start=1):
+    for column, title in enumerate(("Check", "Tables failed", "Tables warned", "Clean rate"), start=1):
         cell = ws.cell(row=header_row, column=column, value=title)
         cell.font = HEADER_FONT
         cell.fill = HEADER_FILL
@@ -279,23 +320,30 @@ def _check_breakdown(ws, start: int, data: ReportData) -> None:
 
     row = header_row + 1
     for check in data.checks:
-        _ran, failed = data.check_stats(check)
+        _ran, failed, warned = data.check_stats(check)
         ws.cell(row=row, column=1, value=check).font = VALUE_FONT
-        cell = ws.cell(row=row, column=2, value=failed)
-        cell.alignment = CENTER
-        if failed:
-            cell.font = Font(size=10, bold=True, color=FAIL_FG)
-            cell.fill = PatternFill("solid", fgColor=FAIL_BG)
-        rate = ws.cell(row=row, column=3, value=(total_tables - failed) / total_tables)
+
+        for column, count, background, foreground in (
+            (2, failed, FAIL_BG, FAIL_FG),
+            (3, warned, WARN_BG, WARN_FG),
+        ):
+            cell = ws.cell(row=row, column=column, value=count)
+            cell.alignment = CENTER
+            if count:
+                cell.font = Font(size=10, bold=True, color=foreground)
+                cell.fill = PatternFill("solid", fgColor=background)
+
+        # "Clean" means neither failed nor warned.
+        rate = ws.cell(row=row, column=4, value=(total_tables - failed - warned) / total_tables)
         rate.number_format = "0%"
         rate.alignment = CENTER
-        for column in range(1, 4):
+        for column in range(1, 5):
             ws.cell(row=row, column=column).border = BOX
         row += 1
 
     if row > header_row + 1:
         ws.conditional_formatting.add(
-            f"C{header_row + 1}:C{row - 1}",
+            f"D{header_row + 1}:D{row - 1}",
             DataBarRule(start_type="num", start_value=0, end_type="num", end_value=1, color="63C384"),
         )
 
@@ -306,7 +354,7 @@ def _check_breakdown(ws, start: int, data: ReportData) -> None:
 
 
 def _results_sheet(ws, data: ReportData) -> None:
-    ws.sheet_properties.tabColor = TAB_OK if data.ok else TAB_BAD
+    ws.sheet_properties.tabColor = _tab_colour(data)
     ws.sheet_view.showGridLines = False
 
     headers = ["", "Table", *data.checks, "Comments", "File"]
@@ -322,15 +370,21 @@ def _results_sheet(ws, data: ReportData) -> None:
 
     for offset, table in enumerate(data.tables):
         row = offset + 2
-        table_ok = table not in data.failing_tables
+        failed = table in data.failing_tables
+        warned = table in data.warning_tables
         banded = PatternFill("solid", fgColor=BAND_BG) if offset % 2 else None
 
-        icon = ws.cell(row=row, column=1, value=PASS_ICON if table_ok else FAIL_ICON)
-        icon.font = Font(size=12, bold=True, color=PASS_FG if table_ok else FAIL_FG)
+        symbol, colour = (
+            (FAIL_ICON, FAIL_FG) if failed
+            else (WARN_ICON, WARN_FG) if warned
+            else (PASS_ICON, PASS_FG)
+        )
+        icon = ws.cell(row=row, column=1, value=symbol)
+        icon.font = Font(size=12, bold=True, color=colour)
         icon.alignment = CENTER
 
         name = ws.cell(row=row, column=2, value=table)
-        name.font = Font(size=10, bold=not table_ok)
+        name.font = Font(size=10, bold=failed or warned)
         name.alignment = LEFT_MIDDLE
         if banded:
             name.fill = banded
@@ -347,6 +401,9 @@ def _results_sheet(ws, data: ReportData) -> None:
             elif status == "FAIL":
                 cell.fill = PatternFill("solid", fgColor=FAIL_BG)
                 cell.font = Font(size=9, bold=True, color=FAIL_FG)
+            elif status == "WARN":
+                cell.fill = PatternFill("solid", fgColor=WARN_BG)
+                cell.font = Font(size=9, bold=True, color=WARN_FG)
             else:
                 # Never ran: not applicable to this table, or an earlier
                 # structural failure stopped the chain.
@@ -386,16 +443,22 @@ def _results_sheet(ws, data: ReportData) -> None:
 
 
 # --------------------------------------------------------------------------
-# Failures
+# Issues
 # --------------------------------------------------------------------------
 
 
-def _failures_sheet(ws, data: ReportData) -> None:
-    ws.sheet_properties.tabColor = TAB_OK if data.ok else TAB_BAD
+def _issues_sheet(ws, data: ReportData) -> None:
+    """
+    Everything that isn't a clean pass, as a flat list.
+
+    Failures first, then warnings -- a warning doesn't fail the job but still
+    wants looking at, and burying it in the matrix would hide it.
+    """
+    ws.sheet_properties.tabColor = _tab_colour(data)
     ws.sheet_view.showGridLines = False
 
     for column, (title, width) in enumerate(
-        (("Table", 26), ("Check", 26), ("What went wrong", 110)), start=1
+        (("Severity", 11), ("Table", 26), ("Check", 26), ("What went wrong", 104)), start=1
     ):
         cell = ws.cell(row=1, column=column, value=title)
         cell.font = HEADER_FONT
@@ -404,36 +467,48 @@ def _failures_sheet(ws, data: ReportData) -> None:
         cell.border = BOX
         ws.column_dimensions[get_column_letter(column)].width = width
 
-    if data.ok:
-        cell = ws.cell(row=2, column=1, value=f"{PASS_ICON}  No failures — every check passed.")
+    findings = [
+        (table, result)
+        for status in ("FAIL", "WARN")
+        for table in data.tables
+        for check in data.checks
+        for result in [data.by_table[table].get(check)]
+        if result and result.status == status
+    ]
+
+    if not findings:
+        cell = ws.cell(row=2, column=1, value=f"{PASS_ICON}  No issues — every check passed.")
         cell.font = Font(size=11, bold=True, color=PASS_FG)
         cell.fill = PatternFill("solid", fgColor=PASS_BG)
-        ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=3)
+        ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=4)
         ws.row_dimensions[2].height = 24
         return
 
-    row = 2
-    for table in data.failing_tables:
-        for check in data.checks:
-            result = data.by_table[table].get(check)
-            if not result or result.status != "FAIL":
-                continue
-            # Table and check are single values, so they sit level with a
-            # detail message that has wrapped over several lines.
-            name = ws.cell(row=row, column=1, value=table)
-            name.font = Font(size=10, bold=True)
-            name.alignment = LEFT_MIDDLE
+    for row, (table, result) in enumerate(findings, start=2):
+        is_failure = result.status == "FAIL"
+        background, foreground = (FAIL_BG, FAIL_FG) if is_failure else (WARN_BG, WARN_FG)
 
-            failed_check = ws.cell(row=row, column=2, value=check)
-            failed_check.font = Font(size=10, color=FAIL_FG)
-            failed_check.alignment = LEFT_MIDDLE
+        severity = ws.cell(row=row, column=1, value=result.status)
+        severity.font = Font(size=10, bold=True, color=foreground)
+        severity.fill = PatternFill("solid", fgColor=background)
+        severity.alignment = CENTER
 
-            detail = ws.cell(row=row, column=3, value=result.message)
-            detail.alignment = LEFT_TOP
-            detail.font = Font(size=9)
-            for column in range(1, 4):
-                ws.cell(row=row, column=column).border = BOX
-            row += 1
+        # Table and check are single values, so they sit level with a
+        # detail message that has wrapped over several lines.
+        name = ws.cell(row=row, column=2, value=table)
+        name.font = Font(size=10, bold=True)
+        name.alignment = LEFT_MIDDLE
+
+        failed_check = ws.cell(row=row, column=3, value=result.check_name)
+        failed_check.font = Font(size=10, color=foreground)
+        failed_check.alignment = LEFT_MIDDLE
+
+        detail = ws.cell(row=row, column=4, value=result.message)
+        detail.alignment = LEFT_TOP
+        detail.font = Font(size=9)
+
+        for column in range(1, 5):
+            ws.cell(row=row, column=column).border = BOX
 
     ws.freeze_panes = "A2"
-    ws.auto_filter.ref = f"A1:C{row - 1}"
+    ws.auto_filter.ref = f"A1:D{len(findings) + 1}"

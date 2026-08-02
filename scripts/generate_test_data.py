@@ -57,6 +57,7 @@ DEFECT_PLAN = {
     ("PERF_GROSS", "202603"): "missing_kpi",
     ("KPI_TRADING_PERF", "202604"): "wrong_sheet",
     ("PERF_NETT", "202604"): "null_analytics",
+    ("ORR", "202604"): "stale_source",
     ("MGMT_FEES", "202605"): "missing_column",
     ("PEER_RANK", "202605"): "unexpected_analytics",
     ("YIELD", "202606"): "zero_rows",
@@ -137,7 +138,9 @@ def main(months: list[str], root=TEST_DATA_ROOT):
     print(f"\nSeeded {len(seeded)} deliberate defect(s):")
     for table_name, yyyymm, defect_type, expected_checks, path in seeded:
         checks_label = ", ".join(sorted(expected_checks))
-        print(f"  {yyyymm} {table_name:<20} {defect_type:<26} -> expect FAIL on: {checks_label}")
+        # stale_source is reported as a warning, not a failure.
+        severity = "WARN" if defect_type == "stale_source" else "FAIL"
+        print(f"  {yyyymm} {table_name:<20} {defect_type:<26} -> expect {severity} on: {checks_label}")
 
 
 if __name__ == "__main__":

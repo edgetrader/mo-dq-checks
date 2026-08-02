@@ -23,6 +23,13 @@ For every table listed in `config/tables_config.json`, for a given month
 | `val_amt_dtype` | `val_amt` is numeric (skipped for tables where `val_amt_type` is `Text`) |
 | `primary_key_uniqueness` | No duplicate rows on the table's key columns |
 | `kpi_completeness` | Every required KPI analytic is present per report_date/mandate_id group (only for tables with `kpi_analytics` defined) |
+| `source_timeliness` | ⚠ *Warning only.* The `YYYYMM` inside each row's `source` value matches the month being run (only for files that carry a `source` column) |
+
+`source_timeliness` reports **WARN** rather than FAIL: stale data is a
+judgement call, not a reason to fail the job, so it never affects the exit
+code. It is skipped entirely for files with no `source` column, and a
+source value carrying no `YYYYMM` at all is treated as "nothing to check"
+rather than warned on — otherwise a source like `RQA` would warn for ever.
 
 A table's check chain stops early on `file_exists`, `sheet_exists`,
 `required_columns`, or `row_count` failures (nothing downstream can be
@@ -72,8 +79,9 @@ Arguments:
 | `--output-dir` | `output/` | Where the Excel report is written |
 | `--tables` | *(all)* | Comma-separated `table_name` list to check a subset |
 
-Exits `0` if everything passes, `1` if anything fails (with a
+Exits `0` if everything passes, `1` if anything **fails** (with a
 `DQ CHECK FAILED: ...` message on stderr for job schedulers to catch).
+Warnings are reported but never change the exit code.
 
 ### From a notebook (e.g. Databricks)
 
@@ -138,18 +146,19 @@ table is what tells you whether one file is broken or something systemic
 has gone wrong across the whole month.
 
 **`Results`** — the full matrix: one row per table, one column per check.
-Green `PASS`, red `FAIL`, grey `–` where a check never ran (either it
+Green `PASS`, red `FAIL`, amber `WARN`, grey `–` where a check never ran (either it
 doesn't apply to that table, or an earlier structural failure stopped the
 chain). A ✔/✖ status column flags failing rows at a glance. Check headers
 are rotated vertically so the grid stays narrow, the header row and table
 names are frozen, and an autofilter is applied.
 
-**`Failures`** — just the problems, as a flat `Table | Check | What went
-wrong` list. This is the sheet to work from; on a clean run it says so.
+**`Issues`** — everything that isn't a clean pass, as a flat
+`Severity | Table | Check | What went wrong` list, failures before
+warnings. This is the sheet to work from; on a clean run it says so.
 
-Cells hold the plain text `PASS`/`FAIL`, not symbols, so the sheet stays
+Cells hold the plain text `PASS`/`FAIL`/`WARN`, not symbols, so the sheet stays
 filterable and readable by other tools — the colour does the visual work.
-Sheet tabs are colour-coded green or red for the overall outcome.
+Sheet tabs are colour-coded green, amber or red for the overall outcome.
 
 ## Config (`config/tables_config.json`)
 

@@ -18,7 +18,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from checks import CHECK_NAMES, CheckResult  # noqa: E402
-from report import FAIL_BG, FAIL_ICON, PASS_BG, PASS_ICON, organise, write_excel_report  # noqa: E402
+from report import (  # noqa: E402
+    FAIL_BG, FAIL_ICON, PASS_BG, PASS_ICON, WARN_BG, WARN_ICON,
+    organise, write_excel_report,
+)
 
 RUN_TIME = datetime(2026, 8, 2, 9, 30, 0)
 
@@ -96,7 +99,7 @@ def test_comments_collect_every_message_for_a_table(mixed_results):
 def test_report_has_three_sheets(mixed_results, tmp_path):
     workbook, path = write(mixed_results, tmp_path)
 
-    assert workbook.sheetnames == ["Summary", "Results", "Failures"]
+    assert workbook.sheetnames == ["Summary", "Results", "Issues"]
     assert path.name == "dq_check_report_202607_20260802_093000.xlsx"
 
 
@@ -187,7 +190,7 @@ def test_summary_verdict_when_clean(clean_results, tmp_path):
 
     assert workbook["Summary"]["A4"].value.startswith(PASS_ICON)
     assert "ALL 6 CHECKS PASSED" in workbook["Summary"]["A4"].value
-    assert workbook["Failures"]["A2"].value.startswith(PASS_ICON)
+    assert workbook["Issues"]["A2"].value.startswith(PASS_ICON)
 
 
 def test_clean_rate_is_measured_against_every_table(mixed_results, tmp_path):
@@ -202,30 +205,36 @@ def test_clean_rate_is_measured_against_every_table(mixed_results, tmp_path):
     sheet = workbook["Summary"]
 
     rates = {
-        sheet.cell(r, 1).value: sheet.cell(r, 3).value
+        sheet.cell(r, 1).value: sheet.cell(r, 4).value
         for r in range(1, sheet.max_row + 1)
-        if isinstance(sheet.cell(r, 3).value, float)
+        if isinstance(sheet.cell(r, 4).value, float)
     }
     # One of three tables failed it -> 67% clean, not 0%.
     assert rates["analytics_completeness"] == pytest.approx(2 / 3)
 
 
-def test_failures_sheet_lists_every_failure(mixed_results, tmp_path):
+def test_issues_sheet_lists_every_finding(mixed_results, tmp_path):
     workbook, _ = write(mixed_results, tmp_path)
-    sheet = workbook["Failures"]
+    sheet = workbook["Issues"]
 
-    listed = {(sheet.cell(r, 1).value, sheet.cell(r, 2).value) for r in range(2, sheet.max_row + 1)}
-    assert listed == {("BETA", "file_exists"), ("GAMMA", "val_amt_dtype")}
-    assert "non-numeric" in sheet.cell(3, 3).value
+    listed = {
+        (sheet.cell(r, 1).value, sheet.cell(r, 2).value, sheet.cell(r, 3).value)
+        for r in range(2, sheet.max_row + 1)
+    }
+    assert listed == {
+        ("FAIL", "BETA", "file_exists"),
+        ("FAIL", "GAMMA", "val_amt_dtype"),
+    }
+    assert "non-numeric" in sheet.cell(3, 4).value
 
 
-def test_failures_table_and_check_are_middle_aligned(mixed_results, tmp_path):
+def test_issues_table_and_check_are_middle_aligned(mixed_results, tmp_path):
     """They should sit level with a detail message that wrapped over several lines."""
     workbook, _ = write(mixed_results, tmp_path)
-    sheet = workbook["Failures"]
+    sheet = workbook["Issues"]
 
     for row in range(2, sheet.max_row + 1):
-        for column in (1, 2):
+        for column in (2, 3):
             cell = sheet.cell(row, column)
             assert cell.alignment.vertical == "center", f"{cell.coordinate} is not middle-aligned"
 
@@ -235,3 +244,58 @@ def test_tab_colour_signals_the_outcome(clean_results, mixed_results, tmp_path):
     failing, _ = write(mixed_results, tmp_path / "b")
 
     assert clean["Summary"].sheet_properties.tabColor.rgb != failing["Summary"].sheet_properties.tabColor.rgb
+
+
+# --------------------------------------------------------------------------
+# Warnings
+# --------------------------------------------------------------------------
+
+
+@pytest.fixture
+def warned_results(clean_results):
+    return clean_results + [
+        result("DELTA", "file_exists", "PASS", "/data/202607/delta.xlsx"),
+        result("DELTA", "sheet_exists", "PASS"),
+        result("DELTA", "source_timeliness", "WARN", "2 mandate(s) sourced from 202606"),
+    ]
+
+
+def test_warning_gets_its_own_verdict(warned_results, tmp_path):
+    """A warning isn't a failure, but "all passed" would be a lie."""
+    workbook, _ = write(warned_results, tmp_path)
+    banner = workbook["Summary"]["A4"].value
+
+    assert banner.startswith(WARN_ICON)
+    assert "NO FAILURES, BUT 1 WARNING(S)" in banner
+
+
+def test_warning_is_counted_separately(warned_results, tmp_path):
+    workbook, _ = write(warned_results, tmp_path)
+    sheet = workbook["Summary"]
+    values = {sheet.cell(r, 1).value: sheet.cell(r, 2).value for r in range(1, 22)}
+
+    assert values["Failed"] == 0
+    assert values["Warnings"] == 1
+    assert values["Passed"] == 8          # warnings don't count as passes
+
+
+def test_warned_cell_is_amber_and_flagged(warned_results, tmp_path):
+    workbook, _ = write(warned_results, tmp_path)
+    sheet = workbook["Results"]
+    headers = [sheet.cell(1, c).value for c in range(1, sheet.max_column + 1)]
+    rows = {sheet.cell(r, 2).value: r for r in range(2, sheet.max_row + 1)}
+    cell = sheet.cell(rows["DELTA"], headers.index("source_timeliness") + 1)
+
+    assert cell.value == "WARN"
+    assert WARN_BG in cell.fill.fgColor.rgb
+    assert sheet.cell(rows["DELTA"], 1).value == WARN_ICON
+
+
+def test_issues_sheet_separates_severities(mixed_results, warned_results, tmp_path):
+    workbook, _ = write(mixed_results + warned_results[len(mixed_results) - 7:], tmp_path)
+    sheet = workbook["Issues"]
+    severities = [sheet.cell(r, 1).value for r in range(2, sheet.max_row + 1)]
+
+    # Failures come before warnings.
+    assert severities == sorted(severities, key=lambda s: 0 if s == "FAIL" else 1)
+    assert "WARN" in severities

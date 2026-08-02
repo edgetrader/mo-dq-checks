@@ -34,14 +34,19 @@ CHECK_NAMES = (
     "val_amt_dtype",
     "primary_key_uniqueness",
     "kpi_completeness",
+    "source_timeliness",
 )
+
+# Checks report PASS, FAIL, or WARN. A warning is a finding worth surfacing
+# that shouldn't fail the job -- it never affects the exit code.
+PASS, FAIL, WARN = "PASS", "FAIL", "WARN"
 
 
 @dataclass
 class CheckResult:
     table_name: str
     check_name: str
-    status: str  # "PASS" or "FAIL"
+    status: str  # PASS, FAIL or WARN
     message: str = ""
 
 
@@ -51,6 +56,10 @@ def _pass(table_name, check_name, message=""):
 
 def _fail(table_name, check_name, message):
     return CheckResult(table_name, check_name, "FAIL", message)
+
+
+def _warn(table_name, check_name, message):
+    return CheckResult(table_name, check_name, WARN, message)
 
 
 @dataclass
@@ -171,7 +180,7 @@ def run_checks_for_table(
         if any(r.status == "FAIL" for r in results):
             return results
 
-    results.extend(_run_frame_checks(df, table_cfg))
+    results.extend(_run_frame_checks(df, table_cfg, yyyymm))
     return results
 
 
@@ -197,10 +206,15 @@ def _check_supplied_frame(df: pd.DataFrame, table_cfg: dict) -> list[CheckResult
     return results
 
 
-def _run_frame_checks(df: pd.DataFrame, table_cfg: dict) -> list[CheckResult]:
+def _run_frame_checks(
+    df: pd.DataFrame, table_cfg: dict, yyyymm: str | None = None
+) -> list[CheckResult]:
     """
     The checks that are purely about the data, once it's loaded and
     normalised. Independent of each other and of where the frame came from.
+
+    `yyyymm` is the month the run is for; only the timeliness check needs it,
+    and that check is skipped when it isn't known.
     """
     table_name = table_cfg["table_name"]
     colname_map = table_cfg["colname_map"]
@@ -217,6 +231,10 @@ def _run_frame_checks(df: pd.DataFrame, table_cfg: dict) -> list[CheckResult]:
 
     if table_cfg["kpi_analytics"]:
         results.append(_check_kpi_completeness(df, table_name, pk_cols, table_cfg["kpi_analytics"]))
+
+    timeliness = _check_source_timeliness(df, table_name, yyyymm)
+    if timeliness is not None:
+        results.append(timeliness)
 
     return results
 
@@ -304,6 +322,91 @@ def _check_kpi_completeness(
 MAX_IDS_LISTED = 12
 MAX_PATTERNS_LISTED = 5
 
+# A source value like "RQA_202611_extract" carries the month it was produced
+# for. Bounded by non-digits so a longer number can't match by accident.
+SOURCE_MONTH = re.compile(r"(?<!\d)(\d{6})(?!\d)")
+SOURCE_COLUMN = "source"
+
+
+def _format_ids(ids: list[str]) -> str:
+    """Spell out a bounded number of ids, then summarise the rest."""
+    ids = sorted(ids)
+    shown = ", ".join(ids[:MAX_IDS_LISTED])
+    if len(ids) > MAX_IDS_LISTED:
+        shown += f", +{len(ids) - MAX_IDS_LISTED} more"
+    return shown
+
+
+def _find_source_column(df: pd.DataFrame) -> str | None:
+    """
+    The source column isn't in any table's colname_map, so it arrives under
+    whatever the file calls it and simply survives the rename. Matched
+    case-insensitively; absent on most tables, which is why the check is
+    skipped rather than failed when it isn't there.
+    """
+    for column in df.columns:
+        if str(column).strip().lower() == SOURCE_COLUMN:
+            return column
+    return None
+
+
+def _check_source_timeliness(
+    df: pd.DataFrame, table_name: str, yyyymm: str | None
+) -> CheckResult | None:
+    """
+    Warn when a row's source says it was produced for a different month.
+
+    Stale data that is otherwise well-formed passes every other check, so
+    without this a whole month of last month's numbers would look clean.
+    It's a warning rather than a failure: the file is usable, it may just be
+    the wrong vintage, and that's a judgement call for whoever reads it.
+
+    Returns None when the check can't apply -- no source column, or no month
+    to compare against (a caller-supplied frame with no yyyymm).
+    """
+    column = _find_source_column(df)
+    if column is None or yyyymm is None:
+        return None
+
+    labels = df["mandate_id"] if "mandate_id" in df.columns else None
+    noun = "mandate" if labels is not None else "row"
+
+    stale: dict[str, list[str]] = {}
+    unverifiable = 0
+
+    for position, value in enumerate(df[column]):
+        months = SOURCE_MONTH.findall(str(value)) if pd.notna(value) else []
+        if not months:
+            # No month in the source at all -- nothing to contradict the run.
+            # Counted, but deliberately not warned on, or a source that never
+            # carries a date would warn on every single run.
+            unverifiable += 1
+            continue
+        if yyyymm in months:
+            continue
+        label = str(labels.iloc[position]) if labels is not None else f"row {position + 2}"
+        stale.setdefault(months[0], []).append(label)
+
+    note = f" ({unverifiable} row(s) had no month in source)" if unverifiable else ""
+
+    if not stale:
+        return _pass(table_name, "source_timeliness", f"source month matches {yyyymm}{note}")
+
+    affected = sum(len(ids) for ids in stale.values())
+    by_month = sorted(stale.items(), key=lambda item: (-len(item[1]), item[0]))
+    described = "; ".join(
+        f"{month} for {len(ids)} {noun}(s): {_format_ids(ids)}"
+        for month, ids in by_month[:MAX_PATTERNS_LISTED]
+    )
+    if len(by_month) > MAX_PATTERNS_LISTED:
+        described += f"; +{len(by_month) - MAX_PATTERNS_LISTED} further month(s)"
+
+    return _warn(
+        table_name,
+        "source_timeliness",
+        f"{affected} {noun}(s) sourced from a month other than {yyyymm} — {described}{note}",
+    )
+
 
 def _describe_missing_kpis(missing_by_group: dict, group_cols: list[str]) -> str:
     """
@@ -330,11 +433,7 @@ def _describe_missing_kpis(missing_by_group: dict, group_cols: list[str]) -> str
     patterns = sorted(ids_by_gap.items(), key=lambda item: (-len(item[1]), item[0]))
     described = []
     for missing, ids in patterns[:MAX_PATTERNS_LISTED]:
-        ids = sorted(ids)
-        shown = ", ".join(ids[:MAX_IDS_LISTED])
-        if len(ids) > MAX_IDS_LISTED:
-            shown += f", +{len(ids) - MAX_IDS_LISTED} more"
-        described.append(f"{list(missing)} for {len(ids)} {noun}(s): {shown}")
+        described.append(f"{list(missing)} for {len(ids)} {noun}(s): {_format_ids(ids)}")
 
     if len(patterns) > MAX_PATTERNS_LISTED:
         described.append(f"+{len(patterns) - MAX_PATTERNS_LISTED} further pattern(s)")
