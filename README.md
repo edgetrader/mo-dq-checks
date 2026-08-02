@@ -127,12 +127,29 @@ loaded.row_count
 
 ## Output
 
-Every run writes `output/dq_check_report_<YYYYMM>_<timestamp>.xlsx`:
+Every run writes `output/dq_check_report_<YYYYMM>_<timestamp>.xlsx`, with
+three sheets in the order you'd read them:
 
-- **`summary`** sheet — `yyyymm`, `data_root`, run time, tables checked, pass/fail counts.
-- **`results`** sheet — one row per table, one column per check (`PASS`/`FAIL`,
-  blank if not applicable), a `file_path` column, and a trailing `comments`
-  column combining every check's message for that table.
+**`Summary`** — a verdict banner (green *"ALL n CHECKS PASSED"* or red
+*"n OF m CHECKS FAILED ACROSS k TABLES"*), the run details (month, data
+root, run time), the headline counts, and a **by-check breakdown** showing
+how many tables each check failed, with a clean-rate data bar. That last
+table is what tells you whether one file is broken or something systemic
+has gone wrong across the whole month.
+
+**`Results`** — the full matrix: one row per table, one column per check.
+Green `PASS`, red `FAIL`, grey `–` where a check never ran (either it
+doesn't apply to that table, or an earlier structural failure stopped the
+chain). A ✔/✖ status column flags failing rows at a glance. Check headers
+are rotated vertically so the grid stays narrow, the header row and table
+names are frozen, and an autofilter is applied.
+
+**`Failures`** — just the problems, as a flat `Table | Check | What went
+wrong` list. This is the sheet to work from; on a clean run it says so.
+
+Cells hold the plain text `PASS`/`FAIL`, not symbols, so the sheet stays
+filterable and readable by other tools — the colour does the visual work.
+Sheet tabs are colour-coded green or red for the overall outcome.
 
 ## Config (`config/tables_config.json`)
 

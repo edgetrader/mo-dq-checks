@@ -131,6 +131,32 @@ pytest -m slow      # all ten months
 Don't verify check changes by eyeballing a console run; the audit compares
 against the plan table-by-table and reports the exact mismatch.
 
+## The Excel report
+
+`src/report.py` owns the whole workbook; `runner.py` just calls
+`write_excel_report(...)` and stays about orchestration. `organise()` turns
+the flat result list into a `ReportData` the sheets read from — do
+aggregation there rather than inside a sheet builder.
+
+Two decisions worth not undoing by accident:
+
+- **Matrix cells hold the strings `PASS`/`FAIL`, not symbols.** Colour does
+  the visual work. Swapping in ✔/✖ would look tidier but breaks filtering
+  and anything reading the sheet programmatically. Icons are used only in
+  the verdict banner and the row-status column, where they can't be
+  mistaken for data.
+- **The by-check "clean rate" is measured over every table checked**, not
+  over the tables a check emitted a result for. `analytics_completeness`
+  only reports when it fails, so an "of those that ran" rate would show it
+  as 0% clean whenever it appears at all — alarming and wrong.
+  `test_clean_rate_is_measured_against_every_table` pins this.
+
+`report.organise()` still recovers the file path by string-slicing the
+`file_exists` message. `read_table` exposes it properly as
+`LoadedTable.path`, but `run_checks_for_table` returns only results, so the
+path doesn't reach the reporting layer yet. Fixing it properly means
+letting the runner carry `LoadedTable` alongside the results.
+
 ## Check names live in one place
 
 `CHECK_NAMES` in `src/checks.py` is the single source of truth for both the
