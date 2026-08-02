@@ -33,10 +33,10 @@
     "provided_by": "RQA",
     "file_frequency": "Monthly",
     "colname_map": {
-      "REPORT DATE": "report_date",
+      "REPORT_DATE": "report_date",
       "MANDATE_ID": "mandate_id",
       "ANALYTICS": "analytics",
-      "VALUES": "val_amt"
+      "VAL_AMT": "val_amt"
     },
     "val_amt_type": "Numeric",
     "expected_analytics": [
@@ -56,10 +56,10 @@
     "provided_by": "RQA",
     "file_frequency": "Monthly",
     "colname_map": {
-      "REPORT DATE": "report_date",
+      "REPORT_DATE": "report_date",
       "MANDATE_ID": "mandate_id",
       "ANALYTICS": "analytics",
-      "VALUES": "val_amt"
+      "VAL_AMT": "val_amt"
     },
     "val_amt_type": "Numeric",
     "expected_analytics": [
