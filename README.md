@@ -23,13 +23,19 @@ For every table listed in `config/tables_config.json`, for a given month
 | `val_amt_dtype` | `val_amt` is numeric (skipped for tables where `val_amt_type` is `Text`) |
 | `primary_key_uniqueness` | No duplicate rows on the table's key columns |
 | `kpi_completeness` | Every required KPI analytic is present per report_date/mandate_id group (only for tables with `kpi_analytics` defined) |
-| `source_timeliness` | ⚠ *Warning only.* The `YYYYMM` inside each row's `source` value matches the month being run (only for files that carry a `source` column) |
+| `source_timeliness` | ⚠ *Warning only.* The month inside each row's `source` value matches the month being run (only for files that carry a `source` column) |
 
 `source_timeliness` reports **WARN** rather than FAIL: stale data is a
 judgement call, not a reason to fail the job, so it never affects the exit
 code. It is skipped entirely for files with no `source` column, and a
-source value carrying no `YYYYMM` at all is treated as "nothing to check"
+source value carrying no month at all is treated as "nothing to check"
 rather than warned on — otherwise a source like `RQA` would warn for ever.
+
+The month is read as `202604`, `2026-04`, `2026/04` or `2026_04`, and a
+full date such as `2026-04-15` names it too — all mean the same month and
+are reported normalised as `202604`. The month must be `01`-`12`, and a
+longer run of digits (`20260715`) is not treated as a month, so an id or
+reference number can't be mistaken for one.
 
 A table's check chain stops early on `file_exists`, `sheet_exists`,
 `required_columns`, or `row_count` failures (nothing downstream can be

@@ -110,7 +110,13 @@ unchanged.
   `defect_injector.multi_field_corruption`'s docstring). If you need a test
   fixture with a "corrupted" row, leave at least one cell non-blank or it
   won't survive being written to `.xlsx`.
-- **A `source` value with no YYYYMM in it does not warn.** `source_timeliness`
+- **Month formats accepted by `source_timeliness`:** `202604`, `2026-04`,
+  `2026/04`, `2026_04`, and full dates like `2026-04-15`. All normalise to
+  `202604` for both comparison and reporting. The month is validated as
+  01-12 and the match is bounded by non-digits, so `202613` and
+  `20260715` are deliberately *not* months -- confirmed with the user
+  that `2026-04` and `202604` mean the same thing.
+- **A `source` value with no month in it does not warn.** `source_timeliness`
   only warns when a month is present *and* differs. Sources that never carry
   a date (`RQA`, a system name) would otherwise warn on every run for ever;
   the count of undated rows is reported in the message instead.
