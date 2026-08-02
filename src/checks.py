@@ -223,7 +223,8 @@ def _run_frame_checks(
     if "mandate_id" in colname_map.values():
         results.append(_check_mandate_id(df, table_name))
 
-    results.append(_check_analytics(df, table_name, table_cfg["expected_analytics"]))
+    results.append(_check_analytics_completeness(df, table_name))
+    results.append(_check_analytics_membership(df, table_name, table_cfg["expected_analytics"]))
     results.append(_check_val_amt(df, table_name, table_cfg["val_amt_type"]))
 
     pk_cols = primary_key_columns(colname_map)
@@ -256,17 +257,26 @@ def _check_mandate_id(df: pd.DataFrame, table_name: str) -> CheckResult:
     return _pass(table_name, "mandate_id_completeness")
 
 
-def _check_analytics(df: pd.DataFrame, table_name: str, expected_analytics: list[str]) -> CheckResult:
-    null_count = df["analytics"].isna().sum()
-    if null_count > 0:
+def _check_analytics_completeness(df: pd.DataFrame, table_name: str) -> CheckResult:
+    null_count = int(df["analytics"].isna().sum())
+    if null_count:
         return _fail(table_name, "analytics_completeness", f"{null_count} null analytics value(s)")
+    return _pass(table_name, "analytics_completeness")
 
-    if expected_analytics:
-        actual_values = set(df["analytics"].unique())
-        unexpected = actual_values - set(expected_analytics)
-        if unexpected:
-            return _fail(table_name, "analytics_membership", f"Unexpected analytics value(s): {sorted(unexpected)}")
 
+def _check_analytics_membership(
+    df: pd.DataFrame, table_name: str, expected_analytics: list[str]
+) -> CheckResult:
+    if not expected_analytics:
+        return _pass(table_name, "analytics_membership", "no expected_analytics configured")
+
+    # Nulls are the completeness check's business. Excluding them here keeps
+    # one bad cell from being reported twice, as both "missing" and "not a
+    # recognised value", while still letting membership judge the rest.
+    present = df["analytics"].dropna()
+    unexpected = sorted(set(present.unique()) - set(expected_analytics))
+    if unexpected:
+        return _fail(table_name, "analytics_membership", f"Unexpected analytics value(s): {unexpected}")
     return _pass(table_name, "analytics_membership")
 
 

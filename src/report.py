@@ -315,9 +315,10 @@ def _check_breakdown(ws, start: int, data: ReportData) -> None:
         cell.border = BOX
 
     # Deliberately measured against every table checked, not against the
-    # tables the check emitted a result for. Some checks only report when
-    # they fail (analytics_completeness), so an "of those that ran" rate
-    # would show them as 0% clean whenever they appear at all.
+    # tables the check emitted a result for. Several checks don't apply to
+    # every table -- mandate_id_completeness, kpi_completeness,
+    # source_timeliness -- so an "of those that ran" rate would swing wildly
+    # on a small denominator and read as alarming when little is wrong.
     total_tables = len(data.tables) or 1
 
     row = header_row + 1

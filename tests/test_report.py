@@ -195,8 +195,8 @@ def test_summary_verdict_when_clean(clean_results, tmp_path):
 
 def test_clean_rate_is_measured_against_every_table(mixed_results, tmp_path):
     """
-    analytics_completeness only emits when it fails, so a rate computed over
-    "tables that ran it" would read 0% clean whenever it appears at all.
+    Checks that don't apply to every table would otherwise be rated on a
+    tiny denominator, reading as alarming when little is actually wrong.
     """
     results = mixed_results + [
         result("ALPHA", "analytics_completeness", "FAIL", "1 null analytics value(s)")

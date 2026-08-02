@@ -94,6 +94,12 @@ unchanged.
   and `row_count` (zero rows) short-circuit the rest of that table's checks —
   there's no dataframe to check anything else against. All other checks run
   independently, so a single file commonly fails more than one check at once.
+- **`analytics_completeness` and `analytics_membership` both always
+  report.** Membership excludes nulls (`dropna()`) so one empty cell isn't
+  counted twice, as both "missing" and "not a recognised value" -- but a
+  table with a null *and* an unknown value legitimately fails both. An
+  earlier version emitted one name or the other from a single function,
+  which left `analytics_completeness` reading n/a on every healthy table.
 - **`val_amt` nulls are not flagged.** `val_amt_dtype` only validates the
   *type* of non-null values; a null `val_amt` currently passes. This was a
   deliberate scope decision (never requested), not an oversight — confirm
