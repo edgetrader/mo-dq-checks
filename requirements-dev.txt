@@ -1,0 +1,3 @@
+# Test dependencies (production only needs requirements.txt).
+-r requirements.txt
+pytest>=7.0

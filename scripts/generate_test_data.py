@@ -100,7 +100,9 @@ def _parse_months(months_arg: str) -> list[str]:
     return [m.strip() for m in months_arg.split(",")]
 
 
-def main(months: list[str]):
+def main(months: list[str], root=TEST_DATA_ROOT):
+    # `root` is a parameter so the test suite can generate into a tmp dir
+    # instead of clobbering the real test_data/ folder.
     table_cfgs = load_table_configs(str(CONFIG_PATH))
     written = []
     seeded = []
@@ -109,7 +111,7 @@ def main(months: list[str]):
         for table_cfg in table_cfgs:
             table_name = table_cfg["table_name"]
             defect_type = DEFECT_PLAN.get((table_name, yyyymm))
-            path = resolve_path(table_cfg, yyyymm, str(TEST_DATA_ROOT))
+            path = resolve_path(table_cfg, yyyymm, str(root))
 
             if defect_type == "missing_file":
                 seeded.append((table_name, yyyymm, defect_type, {"file_exists"}, str(path)))
@@ -131,7 +133,7 @@ def main(months: list[str]):
                 df.to_excel(writer, sheet_name=sheet_name, index=False)
             written.append(path)
 
-    print(f"Wrote {len(written)} file(s) across {len(months)} month(s) {months} to {TEST_DATA_ROOT}")
+    print(f"Wrote {len(written)} file(s) across {len(months)} month(s) {months} to {root}")
     print(f"\nSeeded {len(seeded)} deliberate defect(s):")
     for table_name, yyyymm, defect_type, expected_checks, path in seeded:
         checks_label = ", ".join(sorted(expected_checks))

@@ -5,3 +5,5 @@ output/
 test_data/
 data/
 .DS_Store
+.pytest_cache/
+*.egg-info/

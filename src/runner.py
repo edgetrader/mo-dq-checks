@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from checks import CheckResult, run_checks_for_table
+from checks import CHECK_NAMES, CheckResult, run_checks_for_table
 from config_loader import load_table_configs
 
 DEFAULT_CONFIG_PATH = "config/tables_config.json"
@@ -42,23 +42,6 @@ def _print_report(yyyymm: str, results: list[CheckResult]) -> None:
                 print(f"  - {r.table_name}.{r.check_name}: {r.message}")
 
     print("=" * width)
-
-
-# Preferred left-to-right column order in the report; any check not listed
-# here (e.g. a new check added later) is appended alphabetically.
-CHECK_COLUMN_ORDER = [
-    "file_exists",
-    "sheet_exists",
-    "required_columns",
-    "row_count",
-    "report_date_dtype",
-    "mandate_id_completeness",
-    "analytics_completeness",
-    "analytics_membership",
-    "val_amt_dtype",
-    "primary_key_uniqueness",
-    "kpi_completeness",
-]
 
 
 def _write_excel_report(
@@ -117,7 +100,10 @@ def _write_excel_report(
 
 def _build_results_table(details: pd.DataFrame) -> pd.DataFrame:
     present_checks = list(details["check_name"].unique())
-    ordered_checks = [c for c in CHECK_COLUMN_ORDER if c in present_checks]
+    ordered_checks = [c for c in CHECK_NAMES if c in present_checks]
+    # Anything the checker emitted that CHECK_NAMES doesn't know about still
+    # gets a column rather than disappearing; the test suite treats that as a
+    # failure, but a live run should never silently drop a result.
     ordered_checks += sorted(c for c in present_checks if c not in ordered_checks)
 
     status_pivot = details.pivot(index="table_name", columns="check_name", values="status")

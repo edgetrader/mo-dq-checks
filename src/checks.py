@@ -10,6 +10,31 @@ from config_loader import primary_key_columns, resolve_path
 
 YYYYMM_PATTERN = re.compile(r"^\d{6}$")
 
+# Every check this module emits, in the order it should appear in the report.
+#
+# This lives here, next to the functions that emit the names, rather than in
+# the report module -- one list, one place. `test_dq_checks.py` asserts it
+# stays in step with what the checker actually produces, so adding a check
+# without listing it here fails the tests instead of silently vanishing from
+# the Excel report.
+#
+# `yyyymm_format` is deliberately excluded: it only fires when the operator
+# passes a malformed --yyyymm, in which case the run is aborted and the
+# report is meaningless anyway (the console output and exit code carry it).
+CHECK_NAMES = (
+    "file_exists",
+    "sheet_exists",
+    "required_columns",
+    "row_count",
+    "report_date_dtype",
+    "mandate_id_completeness",
+    "analytics_completeness",
+    "analytics_membership",
+    "val_amt_dtype",
+    "primary_key_uniqueness",
+    "kpi_completeness",
+)
+
 
 @dataclass
 class CheckResult:

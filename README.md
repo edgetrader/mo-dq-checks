@@ -53,7 +53,7 @@ ABI. Use an isolated virtualenv:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt        # or requirements-dev.txt to run the tests
 ```
 
 ## Running checks
@@ -149,3 +149,21 @@ Try it:
 ```bash
 python app/run_dq_check.py --yyyymm 202608 --data-root test_data
 ```
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest              # ~2s: audits five months, covering every check
+pytest -m slow      # ~3s: the same assertions across all ten months
+```
+
+`tests/test_defect_plan.py` generates the defect-seeded fixtures into a temp
+folder, runs the real checker over them, and asserts that **each seeded file
+fails exactly the checks its defect targets** while **every other file stays
+clean**. Both halves matter: the first catches a check that stops detecting
+its defect, the second catches one that starts firing on good data.
+
+It also pins `CHECK_NAMES` (in `src/checks.py`) to what the checker actually
+emits, so adding a check without listing it fails the tests rather than
+silently dropping a column from the Excel report.

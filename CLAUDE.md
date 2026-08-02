@@ -92,27 +92,41 @@ Rules of thumb:
   `wrong_sheet`, `missing_file` are unconditionally safe regardless of KPI
   structure.
 
-After changing the defect plan, always regenerate and re-audit rather than
-assuming it's correct:
+That guard is now automated. `pytest` runs `tests/test_defect_plan.py`,
+which generates the fixtures into a temp folder and asserts every seeded
+defect fails *exactly* its intended checks while every other table stays
+clean — which is precisely what the cascade bugs violated. Run it after any
+change to the checks or the defect plan:
 
 ```bash
-python scripts/generate_test_data.py
-python app/run_dq_check.py --yyyymm <month> --data-root test_data
+pytest              # five months, covers every check (~2s)
+pytest -m slow      # all ten months
 ```
 
-An independent audit script (compares actual failing checks per table
-against the `DEFECT_PLAN`'s expected set) was used during development to
-catch the cascade bugs above — it's not checked into the repo (built
-ad hoc in the session scratchpad), but worth rebuilding if you touch the
-defect plan again: for every `(table, yyyymm)` in `DEFECT_PLAN`, assert the
-actual `FAIL`ed check names equal exactly the expected set; for every table
-*not* in the plan, assert zero failures.
+Don't verify check changes by eyeballing a console run; the audit compares
+against the plan table-by-table and reports the exact mismatch.
 
-## Running the full multi-month test suite
+## Check names live in one place
+
+`CHECK_NAMES` in `src/checks.py` is the single source of truth for both the
+set of checks and their left-to-right order in the Excel report. It sits
+next to the functions that emit those names, and `runner.py` imports it —
+an earlier version kept a second copy in the report module, which was a
+standing drift hazard (add a check, forget the list, lose the column).
+
+`test_check_names_matches_what_the_checker_emits` pins the two together, so
+the drift now fails a test instead of silently shipping.
+
+Note that `yyyymm_format` is deliberately *not* in `CHECK_NAMES`: it only
+fires on a malformed `--yyyymm`, where the run is aborted and the report is
+meaningless anyway. The console output and the non-zero exit code carry that
+case.
+
+## Running many months from the shell
 
 Looping `run_dq_check.py` over all 10 months in a single shell command can
 exceed a 2-minute default tool timeout — pass a longer explicit timeout or
-run months individually/in smaller batches.
+run months in smaller batches. `pytest` covers the same ground far faster.
 
 ## Generated / gitignored directories
 
