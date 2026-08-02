@@ -88,6 +88,43 @@ run_dq_checks(yyyymm="202607", data_root="/dbfs/mnt/.../data")
 Raises `DQCheckFailure` on any failed check (so the job/notebook run fails),
 or pass `raise_on_failure=False` to just inspect the returned results.
 
+### Checking a DataFrame you already have
+
+Reading the data and checking it are separate, so a frame that didn't come
+from a local Excel file — a Databricks/Spark table converted to pandas, a
+share mounted somewhere else, something built in memory — can be checked
+with the same logic:
+
+```python
+from checks import run_checks_for_table
+from config_loader import load_table_configs
+
+cfg = next(c for c in load_table_configs("config/tables_config.json")
+           if c["table_name"] == "PERF_GROSS")
+
+for result in run_checks_for_table(cfg, df=my_dataframe):
+    print(result.status, result.check_name, result.message)
+```
+
+The frame must use the standard column names (`report_date`, `mandate_id`,
+`analytics`, `val_amt`) — applying each table's `colname_map` is the reader's
+job, not the checker's. `file_exists` and `sheet_exists` are skipped, since
+there's no file; everything else runs exactly as it would on a read file.
+
+To do the reading yourself and inspect what came back:
+
+```python
+from checks import read_table
+
+loaded = read_table(cfg, "202607", data_root="test_data")
+loaded.frame        # normalised DataFrame, or None if unreadable
+loaded.results      # file_exists / sheet_exists / required_columns / row_count
+loaded.path         # resolved file path
+loaded.sheet_name   # sheet actually requested
+loaded.raw_columns  # headers as found in the file
+loaded.row_count
+```
+
 ## Output
 
 Every run writes `output/dq_check_report_<YYYYMM>_<timestamp>.xlsx`:

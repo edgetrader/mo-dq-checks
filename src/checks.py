@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import re
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from pathlib import Path
 
 import pandas as pd
 
@@ -52,58 +53,163 @@ def _fail(table_name, check_name, message):
     return CheckResult(table_name, check_name, "FAIL", message)
 
 
-def run_checks_for_table(table_cfg: dict, yyyymm: str, data_root: str) -> list[CheckResult]:
+@dataclass
+class LoadedTable:
+    """
+    What `read_table` found: the frame, the checks performed while reading
+    it, and the facts about the source discovered along the way.
+
+    `frame` is None when the file couldn't be read far enough to check
+    anything else -- `results` then explains why.
+    """
+
+    results: list[CheckResult] = field(default_factory=list)
+    frame: pd.DataFrame | None = None
+    # --- attributes of the source, as actually read ---
+    path: Path | None = None  # resolved file path (None if yyyymm was junk)
+    sheet_name: str | int | None = None  # the sheet pandas was asked for
+    raw_columns: list[str] = field(default_factory=list)  # headers as found
+    row_count: int = 0
+
+    @property
+    def ok(self) -> bool:
+        return self.frame is not None
+
+
+def read_table(table_cfg: dict, yyyymm: str, data_root: str) -> LoadedTable:
+    """
+    Locate and read one table's file, and report the structural checks.
+
+    This is the only part of the checking that touches the filesystem, so a
+    caller reading from somewhere else (a Databricks table, a network share
+    mounted differently, an in-memory frame) can skip it entirely and hand
+    the frame straight to `run_checks_for_table` instead.
+
+    The returned frame has been renamed to the standard column names
+    (report_date / mandate_id / analytics / val_amt).
+    """
     table_name = table_cfg["table_name"]
-    results: list[CheckResult] = []
+    loaded = LoadedTable()
 
     if not YYYYMM_PATTERN.match(yyyymm):
-        results.append(_fail(table_name, "yyyymm_format", f"yyyymm '{yyyymm}' is not in YYYYMM format"))
-        return results
+        loaded.results.append(
+            _fail(table_name, "yyyymm_format", f"yyyymm '{yyyymm}' is not in YYYYMM format")
+        )
+        return loaded
 
-    file_path = resolve_path(table_cfg, yyyymm, data_root)
+    loaded.path = resolve_path(table_cfg, yyyymm, data_root)
 
-    if not file_path.exists():
-        results.append(_fail(table_name, "file_exists", f"File not found: {file_path}"))
-        return results
-    results.append(_pass(table_name, "file_exists", str(file_path)))
+    if not loaded.path.exists():
+        loaded.results.append(_fail(table_name, "file_exists", f"File not found: {loaded.path}"))
+        return loaded
+    loaded.results.append(_pass(table_name, "file_exists", str(loaded.path)))
 
-    sheet_name = table_cfg["sheet_name"] if table_cfg["sheet_name"] else 0
+    loaded.sheet_name = table_cfg["sheet_name"] if table_cfg["sheet_name"] else 0
     sheet_label = table_cfg["sheet_name"] or "default/first sheet"
     try:
-        df = pd.read_excel(file_path, sheet_name=sheet_name, header=0)
+        df = pd.read_excel(loaded.path, sheet_name=loaded.sheet_name, header=0)
     except Exception as e:
         # Broad on purpose: a truncated/corrupted .xlsx can raise things other
         # than ValueError (e.g. zipfile.BadZipFile), and one bad file must not
         # crash the whole batch run -- it should just fail this one table.
-        results.append(_fail(table_name, "sheet_exists", f"Could not read '{sheet_label}': {e}"))
-        return results
-    results.append(_pass(table_name, "sheet_exists"))
+        loaded.results.append(
+            _fail(table_name, "sheet_exists", f"Could not read '{sheet_label}': {e}")
+        )
+        return loaded
+    loaded.results.append(_pass(table_name, "sheet_exists"))
+    loaded.raw_columns = list(df.columns)
 
     colname_map = table_cfg["colname_map"]
-    expected_raw_cols = set(colname_map.keys())
-    actual_cols = set(df.columns)
-    missing_cols = expected_raw_cols - actual_cols
+    missing_cols = set(colname_map.keys()) - set(df.columns)
     if missing_cols:
-        results.append(
+        loaded.results.append(
             _fail(table_name, "required_columns", f"Missing expected column(s): {sorted(missing_cols)}")
+        )
+        return loaded
+    loaded.results.append(_pass(table_name, "required_columns"))
+
+    df = df.rename(columns=colname_map)
+    loaded.row_count = len(df)
+
+    if len(df) == 0:
+        loaded.results.append(_fail(table_name, "row_count", "File has header but no data rows"))
+        return loaded
+    loaded.results.append(_pass(table_name, "row_count", f"{len(df)} rows"))
+
+    loaded.frame = df
+    return loaded
+
+
+def run_checks_for_table(
+    table_cfg: dict,
+    yyyymm: str | None = None,
+    data_root: str | None = None,
+    df: pd.DataFrame | None = None,
+) -> list[CheckResult]:
+    """
+    Run every applicable check for one table.
+
+    Pass `df` to check a frame you already have -- it must use the standard
+    column names, since `read_table` is what applies `colname_map`. Omit it
+    and the table is read from `data_root` for `yyyymm` as before.
+    """
+    table_name = table_cfg["table_name"]
+
+    if df is None:
+        if yyyymm is None or data_root is None:
+            raise ValueError("run_checks_for_table needs either df, or both yyyymm and data_root")
+        loaded = read_table(table_cfg, yyyymm, data_root)
+        if not loaded.ok:
+            return loaded.results
+        results = loaded.results
+        df = loaded.frame
+    else:
+        # A caller-supplied frame skips the file-level checks (there's no
+        # file to check), but it still has to be structurally usable or the
+        # checks below would raise instead of reporting.
+        results = _check_supplied_frame(df, table_cfg)
+        if any(r.status == "FAIL" for r in results):
+            return results
+
+    results.extend(_run_frame_checks(df, table_cfg))
+    return results
+
+
+def _check_supplied_frame(df: pd.DataFrame, table_cfg: dict) -> list[CheckResult]:
+    """The subset of the structural checks that still apply to a given frame."""
+    table_name = table_cfg["table_name"]
+    results = []
+
+    expected = set(table_cfg["colname_map"].values())
+    missing = expected - set(df.columns)
+    if missing:
+        results.append(
+            _fail(table_name, "required_columns", f"Missing expected column(s): {sorted(missing)}")
         )
         return results
     results.append(_pass(table_name, "required_columns"))
 
-    df = df.rename(columns=colname_map)
-
     if len(df) == 0:
-        results.append(_fail(table_name, "row_count", "File has header but no data rows"))
+        results.append(_fail(table_name, "row_count", "Frame has no rows"))
         return results
     results.append(_pass(table_name, "row_count", f"{len(df)} rows"))
 
-    results.append(_check_report_date(df, table_name))
+    return results
+
+
+def _run_frame_checks(df: pd.DataFrame, table_cfg: dict) -> list[CheckResult]:
+    """
+    The checks that are purely about the data, once it's loaded and
+    normalised. Independent of each other and of where the frame came from.
+    """
+    table_name = table_cfg["table_name"]
+    colname_map = table_cfg["colname_map"]
+    results = [_check_report_date(df, table_name)]
 
     if "mandate_id" in colname_map.values():
         results.append(_check_mandate_id(df, table_name))
 
     results.append(_check_analytics(df, table_name, table_cfg["expected_analytics"]))
-
     results.append(_check_val_amt(df, table_name, table_cfg["val_amt_type"]))
 
     pk_cols = primary_key_columns(colname_map)

@@ -51,6 +51,31 @@ The primary key for each table is **derived**, not read from
 it's every value in `colname_map` except `val_amt`. See
 `config_loader.primary_key_columns()`.
 
+## Reading is separate from checking
+
+`src/checks.py` has two halves, and the split is load-bearing:
+
+- **`read_table(table_cfg, yyyymm, data_root) -> LoadedTable`** is the only
+  code that touches the filesystem. It performs the four structural checks
+  (`file_exists`, `sheet_exists`, `required_columns`, `row_count`), applies
+  `colname_map`, and returns the normalised frame alongside the facts it
+  learned about the source (`path`, `sheet_name`, `raw_columns`,
+  `row_count`). `LoadedTable.ok` is False when the frame is unusable.
+- **`run_checks_for_table(table_cfg, yyyymm=None, data_root=None, df=None)`**
+  calls `read_table` only when `df` is not supplied. Pass a frame and it
+  checks that instead — the point being that data which never came from a
+  local folder (Databricks, a differently-mounted share, an in-memory build)
+  gets the same checks.
+
+A supplied frame must already use the standard column names; `colname_map`
+is the reader's responsibility. Such a frame still gets `required_columns`
+and `row_count` — without that guard, a frame missing a column would raise
+`KeyError` out of the data checks rather than reporting a FAIL.
+
+Keep `_run_frame_checks` free of any I/O or path knowledge. If a new check
+needs something about the file, put it on `LoadedTable` rather than reaching
+for the filesystem from a check.
+
 ## Known behaviors (not bugs)
 
 - **Early-return checks**: `file_exists`, `sheet_exists`, `required_columns`,
