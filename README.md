@@ -146,7 +146,7 @@ table is what tells you whether one file is broken or something systemic
 has gone wrong across the whole month.
 
 **`Results`** — the full matrix: one row per table, one column per check.
-Green `PASS`, red `FAIL`, amber `WARN`, grey `–` where a check never ran (either it
+Green `PASS`, red `FAIL`, amber `WARN`, grey `n/a` where a check never ran (either it
 doesn't apply to that table, or an earlier structural failure stopped the
 chain). A ✔/✖ status column flags failing rows at a glance. Check headers
 are rotated vertically so the grid stays narrow, the header row and table

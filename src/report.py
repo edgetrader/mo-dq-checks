@@ -42,12 +42,14 @@ RULE = "D9D9D9"
 PASS_BG, PASS_FG = "C6EFCE", "006100"
 FAIL_BG, FAIL_FG = "FFC7CE", "9C0006"
 WARN_BG, WARN_FG = "FFEB9C", "9C6500"
-SKIP_BG, SKIP_FG = "F2F2F2", "BFBFBF"
+# Mid grey, not near-white: a "didn't run" cell must read as a deliberate
+# state rather than looking like an empty cell someone forgot to fill.
+SKIP_BG, SKIP_FG = "F2F2F2", "808080"
 BAND_BG = "F7F9FC"
 
 TAB_OK, TAB_WARN, TAB_BAD = "00B050", "FFC000", "C00000"
 
-PASS_ICON, WARN_ICON, FAIL_ICON, SKIP_TEXT = "✔", "!", "✖", "–"
+PASS_ICON, WARN_ICON, FAIL_ICON, SKIP_TEXT = "✔", "!", "✖", "n/a"
 
 # --- reusable styles -------------------------------------------------------
 TITLE_FONT = Font(name="Calibri", size=18, bold=True, color=NAVY)
