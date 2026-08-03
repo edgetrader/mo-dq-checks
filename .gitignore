@@ -8,7 +8,11 @@ data/
 .pytest_cache/
 *.egg-info/
 
-# Not tracked: kept locally, but not part of the published repo
+# Development-only: kept locally, but not part of the production branch.
+# These are tracked on the `development` branch instead.
 ref/
 scripts/
 tests/
+CLAUDE.md
+pytest.ini
+requirements-dev.txt
