@@ -124,6 +124,19 @@ def test_table_without_mandate_id_labels_by_its_group(table_cfg):
     assert "['kpi_b'] for 1 group(s): 2026-07-31" in message
 
 
+def test_a_missing_kpi_warns_rather_than_fails(table_cfg):
+    """
+    A missing KPI is usually a legitimate gap -- a mandate with no value
+    this month -- so it's surfaced for judgement, not treated as a broken
+    file. It must not affect the exit code.
+    """
+    results = {r.check_name: r for r in run_checks_for_table(
+        table_cfg, df=frame({"M001": ["kpi_a"], "M002": KPIS}))}
+
+    assert results["kpi_completeness"].status == "WARN"
+    assert not [r for r in results.values() if r.status == "FAIL"]
+
+
 def test_complete_data_produces_no_failure(table_cfg):
     df = frame({"M001": KPIS, "M002": KPIS})
     results = {r.check_name: r for r in run_checks_for_table(table_cfg, df=df)}

@@ -108,8 +108,10 @@ for the filesystem from a check.
 Checks emit `PASS`, `FAIL` or `WARN`. A warning is a real finding that
 shouldn't fail the job: it is counted separately, coloured amber, listed on
 the Issues sheet, and **never** affects the exit code -- only `FAIL` raises
-`DQCheckFailure`. `source_timeliness` is currently the only warning-level
-check.
+`DQCheckFailure`. Two checks are warning-level: `source_timeliness` and
+`kpi_completeness`. Both describe data that is usable but wants a human
+look -- stale vintage, or a mandate with no value this month -- rather
+than a file that's broken.
 
 If you add another, remember the fixture audit compares *non-passing*
 checks, not just failures, so a warning-producing defect works there

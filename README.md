@@ -22,17 +22,23 @@ For every table listed in `config/tables_config.json`, for a given month
 | `analytics_membership` | Every `analytics` value is in the table's expected set |
 | `val_amt_dtype` | `val_amt` is numeric (skipped for tables where `val_amt_type` is `Text`) |
 | `primary_key_uniqueness` | No duplicate rows on the table's key columns |
-| `kpi_completeness` | Every required KPI analytic is present per report_date/mandate_id group (only for tables with `kpi_analytics` defined) |
+| `kpi_completeness` | ⚠ *Warning only.* Every required KPI analytic is present per report_date/mandate_id group (only for tables with `kpi_analytics` defined) |
 | `source_timeliness` | ⚠ *Warning only.* The `YYYYMM` inside each row's `source` value matches the month being run (only for files that carry a `source` column) |
 
-`source_timeliness` reports **WARN** rather than FAIL: stale data is a
-judgement call, not a reason to fail the job, so it never affects the exit
-code. It is skipped entirely for files with no `source` column, and a
-source value carrying no month at all is treated as "nothing to check"
-rather than warned on — otherwise a source like `RQA` would warn for ever.
+Two checks report **WARN** rather than FAIL, so they never affect the exit
+code. Both describe data that is usable but wants a human look, rather than
+a file that is broken:
 
-The month may be written `202604` or `2026-04`; both mean the same month
-and are reported as `202604`.
+- **`kpi_completeness`** — a mandate may legitimately have no value for a
+  KPI this month, or not be onboarded yet.
+- **`source_timeliness`** — the file is readable, it may just be the wrong
+  vintage.
+
+`source_timeliness` is skipped entirely for files with no `source` column,
+and a source value carrying no month at all is treated as "nothing to
+check" rather than warned on — otherwise a source like `RQA` would warn for
+ever. The month may be written `202604` or `2026-04`; both mean the same
+month and are reported as `202604`.
 
 A table's check chain stops early on `file_exists`, `sheet_exists`,
 `required_columns`, or `row_count` failures (nothing downstream can be
