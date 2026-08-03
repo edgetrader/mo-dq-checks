@@ -337,12 +337,21 @@ def _check_primary_key_uniqueness(df: pd.DataFrame, table_name: str, pk_cols: li
 def _check_kpi_completeness(
     df: pd.DataFrame, table_name: str, pk_cols: list[str], kpi_analytics: list[str]
 ) -> CheckResult:
+    """
+    Every required KPI should appear for each report_date/mandate_id group.
+
+    Reported as a WARNING, not a failure: a missing KPI is usually a
+    legitimate gap -- a mandate that genuinely has no value this month, or
+    one not yet onboarded -- rather than a broken file. The data present is
+    still usable, so this is surfaced for someone to judge instead of
+    stopping the job.
+    """
     group_cols = [c for c in pk_cols if c != "analytics"]
     if not group_cols:
         actual = set(df["analytics"].unique())
         missing = set(kpi_analytics) - actual
         if missing:
-            return _fail(table_name, "kpi_completeness", f"Missing required KPI analytics: {sorted(missing)}")
+            return _warn(table_name, "kpi_completeness", f"Missing required KPI analytics: {sorted(missing)}")
         return _pass(table_name, "kpi_completeness")
 
     missing_by_group = {}
@@ -353,7 +362,7 @@ def _check_kpi_completeness(
             missing_by_group[key] = tuple(sorted(missing))
 
     if missing_by_group:
-        return _fail(
+        return _warn(
             table_name, "kpi_completeness", _describe_missing_kpis(missing_by_group, group_cols)
         )
     return _pass(table_name, "kpi_completeness")
