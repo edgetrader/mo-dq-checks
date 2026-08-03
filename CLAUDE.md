@@ -4,6 +4,30 @@ Guidance for Claude Code when working in this repository. See `README.md`
 for user-facing usage; this file is for things that aren't obvious from
 reading the code.
 
+## Branches
+
+- **`development`** (this branch) is the full project: source, config, the
+  generation scripts, the reference spreadsheet and the test suite. Do all
+  work here.
+- **`main`** is production. It carries only what's needed to run a check --
+  `src/`, `app/`, `config/` and the docs. Its `.gitignore` excludes `ref/`,
+  `scripts/` and `tests/`.
+
+**Never merge `development` into `main`.** A merge brings every file with
+it, which would put the tests and scripts back on the production branch and
+defeat the split. Promote by copying just the production paths instead:
+
+```bash
+git checkout main
+git checkout development -- src app config README.md CLAUDE.md requirements.txt
+git commit -m "Promote <what> from development"
+```
+
+That leaves `main`'s own `.gitignore` untouched and never introduces the
+excluded directories. Going the other way (`main` -> `development`) is a
+normal merge and is fine, though in practice main shouldn't gain commits of
+its own.
+
 ## Environment
 
 The system Python/Anaconda on this machine has a broken numpy/pandas/pyarrow
