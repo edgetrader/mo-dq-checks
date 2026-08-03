@@ -151,6 +151,16 @@ class ReportData:
 
 
 def organise(yyyymm: str, data_root: str, results: list[CheckResult], run_time: datetime) -> ReportData:
+    """
+    Turn the flat result list into the shape the sheets read from.
+
+    Do aggregation here rather than inside a sheet builder, so the three
+    sheets can't disagree with each other about the same run.
+
+    Table order follows the order the checker produced them, which is the
+    config's order -- not alphabetical, so the report matches the console
+    output line for line.
+    """
     data = ReportData(yyyymm=yyyymm, data_root=data_root, run_time=run_time)
 
     for result in results:
@@ -188,6 +198,14 @@ def write_excel_report(
     output_dir: str,
     run_time: datetime,
 ) -> Path:
+    """
+    Write the workbook and return its path.
+
+    `run_time` is passed in rather than taken here so the filename matches
+    the run it describes, even if checking took a while. The name carries
+    both the month and the timestamp, so repeated runs of the same month
+    sit side by side instead of overwriting each other.
+    """
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f"dq_check_report_{yyyymm}_{run_time:%Y%m%d_%H%M%S}.xlsx"
@@ -209,12 +227,14 @@ def write_excel_report(
 
 
 def _tab_colour(data: ReportData) -> str:
+    """Red beats amber beats green -- the worst thing present wins."""
     if data.failures:
         return TAB_BAD
     return TAB_WARN if data.warnings else TAB_OK
 
 
 def _summary_sheet(ws, data: ReportData) -> None:
+    """The at-a-glance sheet: verdict, run details, totals, per-check breakdown."""
     ws.title = "Summary"
     ws.sheet_properties.tabColor = _tab_colour(data)
     ws.sheet_view.showGridLines = False
@@ -357,6 +377,13 @@ def _check_breakdown(ws, start: int, data: ReportData) -> None:
 
 
 def _results_sheet(ws, data: ReportData) -> None:
+    """
+    The table x check matrix.
+
+    Column layout is: status icon, table, one column per check, comments,
+    file path. Several offsets below are relative to `len(data.checks)`
+    because the number of check columns varies with what the run emitted.
+    """
     ws.sheet_properties.tabColor = _tab_colour(data)
     ws.sheet_view.showGridLines = False
 
