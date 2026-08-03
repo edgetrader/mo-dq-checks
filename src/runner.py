@@ -1,3 +1,10 @@
+"""
+Orchestration: run every configured table for one month, report the
+results, and decide whether the job passed.
+
+Deliberately thin -- the checks live in checks.py and the workbook in
+report.py, so this stays about sequencing and the pass/fail decision.
+"""
 from __future__ import annotations
 
 from datetime import datetime
@@ -16,6 +23,13 @@ class DQCheckFailure(Exception):
 
 
 def _print_report(yyyymm: str, results: list[CheckResult]) -> None:
+    """
+    Print the run to stdout, which is what a scheduler captures in its log.
+
+    Every result is listed, then a summary, then the failures and warnings
+    repeated on their own so they can be read without scrolling back
+    through several hundred passing lines.
+    """
     width = 64
     print("=" * width)
     print(f"DQ CHECK RUN — yyyymm={yyyymm} — {datetime.now():%Y-%m-%d %H:%M:%S}")
@@ -69,21 +83,29 @@ def run_dq_checks(
 
     Writes a timestamped Excel report to output_dir with three sheets:
     Summary (verdict, run details, per-check breakdown), Results (the
-    table x check matrix), and Failures (a flat list of the problems).
+    table x check matrix), and Issues (a flat list of failures and
+    warnings).
 
-    Raises DQCheckFailure if any check fails and raise_on_failure=True (default),
-    so this fails a Databricks job/notebook on bad data. Set raise_on_failure=False
-    to inspect results programmatically instead.
+    Raises DQCheckFailure if any check FAILS and raise_on_failure=True
+    (the default), so bad data fails a Databricks job or notebook cell.
+    Warnings never raise. Set raise_on_failure=False to inspect the results
+    programmatically instead.
     """
+    # Captured once, so the report's filename and its "run at" agree even
+    # if the run takes a while.
     run_time = datetime.now()
     table_cfgs = load_table_configs(config_path, table_names)
 
+    # Every table is checked regardless of what the others did: one bad
+    # file must not hide the state of the other twenty-one.
     results: list[CheckResult] = []
     for table_cfg in table_cfgs:
         results.extend(run_checks_for_table(table_cfg, yyyymm, data_root))
 
     _print_report(yyyymm, results)
 
+    # Written before the raise below, or a failing run -- the one you most
+    # want to look at -- would produce no report at all.
     report_path = write_excel_report(yyyymm, data_root, results, output_dir, run_time)
     print(f"Report written to: {report_path}")
 

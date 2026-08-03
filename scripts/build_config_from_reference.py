@@ -19,6 +19,14 @@ OUTPUT_CONFIG = PROJECT_ROOT / "config" / "tables_config.json"
 
 
 def _parse_literal(value, default=None):
+    """
+    Read a cell that holds a list or dict.
+
+    reference.xlsx is hand-maintained, so these arrive as text that is
+    sometimes valid JSON and sometimes Python-style with single quotes.
+    JSON is tried first; ast.literal_eval catches the rest. Both refuse to
+    execute code, unlike eval().
+    """
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return default
     value = value.strip()
@@ -31,6 +39,7 @@ def _parse_literal(value, default=None):
 
 
 def derive_table_name(file_name: str) -> str:
+    """Table name from its filename: YYYYMM_PERF_GROSS.xlsx -> PERF_GROSS."""
     name = re.sub(r"^YYYYMM_", "", file_name)
     name = re.sub(r"\.xlsx$", "", name, flags=re.IGNORECASE)
     return name
@@ -48,6 +57,14 @@ def clean_source_folder(source_folder: str) -> str:
 
 
 def build_config() -> list[dict]:
+    """
+    Project the reference sheet into the JSON the checker consumes.
+
+    Note what is NOT carried across: reference.xlsx has a `primary_key`
+    column, but it is inconsistently cased and doesn't always match the
+    real headers, so the key is derived from `colname_map` at run time
+    instead (see config_loader.primary_key_columns).
+    """
     df = pd.read_excel(REFERENCE_XLSX, sheet_name="data")
     tables = []
     for _, row in df.iterrows():

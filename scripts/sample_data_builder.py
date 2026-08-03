@@ -11,6 +11,13 @@ SOURCE_COLUMN = "source"
 
 
 def build_sample_df(table_cfg: dict, yyyymm: str) -> pd.DataFrame:
+    """
+    One clean month for a table: every expected analytic, for each mandate.
+
+    Built with the standard column names and renamed to the table's raw
+    headers at the end, so the fixtures exercise the checker's colname_map
+    rather than bypassing it.
+    """
     colname_map = table_cfg["colname_map"]
     reverse_map = {std: raw for raw, std in colname_map.items()}
     has_mandate = "mandate_id" in colname_map.values()
@@ -43,6 +50,7 @@ def build_sample_df(table_cfg: dict, yyyymm: str) -> pd.DataFrame:
 
 
 def write_table_file(table_cfg: dict, yyyymm: str, path) -> None:
+    """Write one clean fixture to `path`, creating parent folders."""
     df = build_sample_df(table_cfg, yyyymm)
     path.parent.mkdir(parents=True, exist_ok=True)
     sheet_name = table_cfg["sheet_name"] or "Sheet1"

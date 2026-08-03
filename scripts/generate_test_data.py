@@ -82,12 +82,20 @@ DEFECT_PLAN = {
 
 
 def _default_months(end_month: str, count: int) -> list[str]:
+    """`count` consecutive months ending at `end_month`, oldest first."""
     end = pd.Timestamp(f"{end_month[:4]}-{end_month[4:]}-01")
     months = [end - pd.DateOffset(months=i) for i in range(count)]
     return [m.strftime("%Y%m") for m in reversed(months)]
 
 
 def _parse_months(months_arg: str) -> list[str]:
+    """
+    Accepts a single month, a comma-separated list, or an inclusive range:
+    "202601", "202601,202603" or "202601-202612".
+
+    The range branch is only taken when there's no comma, so a list can't
+    be misread as a range.
+    """
     if "-" in months_arg and "," not in months_arg:
         start, end = months_arg.split("-")
         start_ts = pd.Timestamp(f"{start[:4]}-{start[4:]}-01")

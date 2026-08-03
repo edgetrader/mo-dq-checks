@@ -241,7 +241,20 @@ def _run_frame_checks(
 
 
 def _check_report_date(df: pd.DataFrame, table_name: str) -> CheckResult:
+    """
+    Every report_date must parse as a date.
+
+    Note the count can point at the wrong rows when the column mixes date
+    formats. pandas infers one format from the first value and applies it
+    to the rest, so a column whose first row reads 31/07/2026 and whose
+    remaining four read 2026-07-31 reports "4 not parseable" -- the odd row
+    out sets the format and the majority is blamed. The check still fails,
+    which is what matters, but read the count as "values that didn't match
+    the inferred format", not "bad cells".
+    """
     with warnings.catch_warnings():
+        # Mixed or unparseable values make pandas warn about falling back to
+        # dateutil -- exactly the case being detected, so the warning is noise.
         warnings.simplefilter("ignore", UserWarning)
         parsed = pd.to_datetime(df["report_date"], errors="coerce")
     invalid_count = parsed.isna().sum()
@@ -281,10 +294,20 @@ def _check_analytics_membership(
 
 
 def _check_val_amt(df: pd.DataFrame, table_name: str, val_amt_type: str) -> CheckResult:
+    """
+    Values must be numeric, for the tables configured that way.
+
+    Some tables carry text in val_amt by design (ORR grades, duration
+    ranges), which is what val_amt_type records -- those skip the check
+    rather than failing it.
+    """
     if val_amt_type != "Numeric":
         return _pass(table_name, "val_amt_dtype", f"val_amt_type={val_amt_type}, numeric check skipped")
 
     coerced = pd.to_numeric(df["val_amt"], errors="coerce")
+    # notna() first: this judges the type of values that are present, not
+    # whether one was supplied. A null val_amt deliberately passes -- see
+    # CLAUDE.md before changing that.
     invalid_mask = df["val_amt"].notna() & coerced.isna()
     invalid_count = invalid_mask.sum()
     if invalid_count > 0:
@@ -293,6 +316,14 @@ def _check_val_amt(df: pd.DataFrame, table_name: str, val_amt_type: str) -> Chec
 
 
 def _check_primary_key_uniqueness(df: pd.DataFrame, table_name: str, pk_cols: list[str]) -> CheckResult:
+    """
+    No two rows may share a primary key.
+
+    keep=False counts every row in a duplicated group, not just the extra
+    copies -- so one value appearing twice reports as "2 row(s)". That is
+    deliberate: all of them are suspect, and which is the original isn't
+    knowable from the file.
+    """
     dup_count = df.duplicated(subset=pk_cols, keep=False).sum()
     if dup_count > 0:
         return _fail(
