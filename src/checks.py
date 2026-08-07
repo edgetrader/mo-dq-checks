@@ -389,9 +389,15 @@ def _months_in(value) -> list[str]:
     ]
 
 
-def _format_ids(ids: list[str]) -> str:
-    """Spell out a bounded number of ids, then summarise the rest."""
-    ids = sorted(ids)
+def _format_ids(ids) -> str:
+    """
+    Spell out a bounded number of ids, then summarise the rest.
+
+    Deduplicated: callers may collect one id per offending *row*, and a
+    mandate typically has one row per analytic, so the same id can arrive
+    dozens of times. Listing it dozens of times helps nobody.
+    """
+    ids = sorted(set(ids))
     shown = ", ".join(ids[:MAX_IDS_LISTED])
     if len(ids) > MAX_IDS_LISTED:
         shown += f", +{len(ids) - MAX_IDS_LISTED} more"
@@ -432,7 +438,10 @@ def _check_source_timeliness(
     labels = df["mandate_id"] if "mandate_id" in df.columns else None
     noun = "mandate" if labels is not None else "row"
 
-    stale: dict[str, list[str]] = {}
+    # Keyed by month -> the distinct mandates (or rows) sourced from it. A
+    # set because a stale extract makes every one of that mandate's rows
+    # stale, and the mandate should still be named once.
+    stale: dict[str, set[str]] = {}
     unverifiable = 0
 
     for position, value in enumerate(df[column]):
@@ -446,14 +455,16 @@ def _check_source_timeliness(
         if yyyymm in months:
             continue
         label = str(labels.iloc[position]) if labels is not None else f"row {position + 2}"
-        stale.setdefault(months[0], []).append(label)
+        stale.setdefault(months[0], set()).add(label)
 
     note = f" ({unverifiable} row(s) had no month in source)" if unverifiable else ""
 
     if not stale:
         return _pass(table_name, "source_timeliness", f"source month matches {yyyymm}{note}")
 
-    affected = sum(len(ids) for ids in stale.values())
+    # Distinct across all months: a mandate whose rows disagree with each
+    # other appears under each, but is one affected mandate.
+    affected = len({label for labels in stale.values() for label in labels})
     by_month = sorted(stale.items(), key=lambda item: (-len(item[1]), item[0]))
     described = "; ".join(
         f"{month} for {len(ids)} {noun}(s): {_format_ids(ids)}"
@@ -491,10 +502,11 @@ def _describe_missing_kpis(missing_by_group: dict, group_cols: list[str]) -> str
         ids_by_gap.setdefault(missing, []).append(label_of(key))
 
     # Widest-reaching gap first -- that's the one worth acting on.
-    patterns = sorted(ids_by_gap.items(), key=lambda item: (-len(item[1]), item[0]))
+    patterns = sorted(ids_by_gap.items(), key=lambda item: (-len(set(item[1])), item[0]))
     described = []
     for missing, ids in patterns[:MAX_PATTERNS_LISTED]:
-        described.append(f"{list(missing)} for {len(ids)} {noun}(s): {_format_ids(ids)}")
+        unique = sorted(set(ids))
+        described.append(f"{list(missing)} for {len(unique)} {noun}(s): {_format_ids(unique)}")
 
     if len(patterns) > MAX_PATTERNS_LISTED:
         described.append(f"+{len(patterns) - MAX_PATTERNS_LISTED} further pattern(s)")

@@ -175,6 +175,64 @@ def test_table_without_mandate_id_reports_rows(table_cfg):
     assert "row 2" in result.message  # the spreadsheet row, header included
 
 
+def multi_row_frame(sources: dict, rows_each: int = 8) -> pd.DataFrame:
+    """Several rows per mandate, as a real table has -- one per analytic."""
+    return pd.DataFrame(
+        [
+            {
+                "report_date": "2026-07-31",
+                "mandate_id": mandate,
+                "analytics": f"alpha_{i}",
+                "val_amt": 1.0,
+                "source": value,
+            }
+            for mandate, value in sources.items()
+            for i in range(rows_each)
+        ]
+    )
+
+
+def test_a_mandate_is_named_once_however_many_rows_it_has(table_cfg):
+    """
+    A stale extract makes every one of that mandate's rows stale. Listing
+    the id once per row would repeat it dozens of times and report the row
+    count as though it were a mandate count.
+    """
+    df = multi_row_frame({"M001": "RQA_202606", "M002": "RQA_202607"}, rows_each=8)
+
+    result = timeliness(table_cfg, df)
+
+    assert result.message == (
+        "1 mandate(s) sourced from a month other than 202607 — "
+        "202606 for 1 mandate(s): M001"
+    )
+
+
+def test_the_count_is_mandates_not_rows(table_cfg):
+    df = multi_row_frame({"M001": "RQA_202606", "M003": "RQA_202606"}, rows_each=8)
+
+    result = timeliness(table_cfg, df)
+
+    assert result.message.startswith("2 mandate(s) sourced")
+    assert "202606 for 2 mandate(s): M001, M003" in result.message
+
+
+def test_a_mandate_split_across_two_stale_months_counts_once(table_cfg):
+    """Its rows disagree with each other, but it is one affected mandate."""
+    rows = [
+        {"report_date": "2026-07-31", "mandate_id": "M001", "analytics": f"a{i}",
+         "val_amt": 1.0, "source": "RQA_202606" if i % 2 else "RQA_202605"}
+        for i in range(6)
+    ]
+
+    result = timeliness(table_cfg, pd.DataFrame(rows))
+
+    assert result.message.startswith("1 mandate(s) sourced")
+    # Listed under each month it actually came from.
+    assert "202605 for 1 mandate(s): M001" in result.message
+    assert "202606 for 1 mandate(s): M001" in result.message
+
+
 def test_a_warning_does_not_make_the_table_fail(table_cfg):
     df = frame({"M001": "RQA_202606"})
     statuses = {r.status for r in run_checks_for_table(table_cfg, yyyymm="202607", df=df)}

@@ -124,6 +124,18 @@ def test_table_without_mandate_id_labels_by_its_group(table_cfg):
     assert "['kpi_b'] for 1 group(s): 2026-07-31" in message
 
 
+def test_no_mandate_is_listed_twice(table_cfg):
+    """Each mandate is one group, so it can only appear once per gap."""
+    import re
+
+    df = frame({f"M{i:03d}": ["kpi_a"] for i in range(1, 6)})
+
+    message = kpi_message(table_cfg, df)
+    listed = re.findall(r"M\d{3}", message)
+
+    assert listed == sorted(set(listed))
+
+
 def test_a_missing_kpi_warns_rather_than_fails(table_cfg):
     """
     A missing KPI is usually a legitimate gap -- a mandate with no value
